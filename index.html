@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <style>
         :root {
             --primary: #0A2540;
@@ -511,7 +512,8 @@
                 <h2 class="supplier-name" id="supplierName"></h2>
                 <div style="display: flex; align-items: center; gap: 1rem;">
                     <span class="subtitle" id="dateRange"></span>
-                    <button class="export-button" onclick="exportReport()">Export Report</button>
+                    <button class="export-button" onclick="exportToExcel()">Export to Excel</button>
+                    <button class="export-button" onclick="exportReport()">Export CSV</button>
                 </div>
             </div>
 
@@ -551,6 +553,43 @@
                         </small>
                     </div>
                 </div>
+                <div style="margin-top: 1.5rem;">
+                    <button onclick="toggleScoringSettings()" style="background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: all 0.3s ease;">
+                        ⚙️ Adjust Weighted Scoring
+                    </button>
+                </div>
+                <div id="scoringSettings" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(0, 217, 184, 0.05); border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--accent);">Weighted Score Points</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">On-Time (≤0d)</label>
+                            <input type="number" id="points_ontime" value="100" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">1-3 days late</label>
+                            <input type="number" id="points_1_3" value="85" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">4-5 days late</label>
+                            <input type="number" id="points_4_5" value="70" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">6-7 days late</label>
+                            <input type="number" id="points_6_7" value="55" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">8-14 days late</label>
+                            <input type="number" id="points_8_14" value="40" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">15+ days late</label>
+                            <input type="number" id="points_15_plus" value="0" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                    </div>
+                    <div style="margin-top: 0.75rem; font-size: 0.75rem; color: var(--text-secondary);">
+                        Adjust these values to match your organization's scoring system.
+                    </div>
+                </div>
                 <div style="margin-top: 1rem; padding: 1rem; background: rgba(0, 217, 184, 0.05); border-radius: 8px; border-left: 3px solid var(--accent);">
                     <div style="font-size: 0.85rem; color: var(--text-secondary);">
                         <strong style="color: var(--accent);">Current Settings:</strong> 
@@ -569,6 +608,15 @@
                     <div class="metric-subtitle">Target: 98.5%</div>
                     <div class="progress-bar">
                         <div class="progress-fill" id="otdProgress" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-label">Weighted Score</div>
+                    <div class="metric-value accent" id="weightedScore">0</div>
+                    <div class="metric-subtitle">Based on lateness severity</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="scoreProgress" style="width: 0%"></div>
                     </div>
                 </div>
 
@@ -792,11 +840,17 @@
             const onTimeLines = totalLines - lateLines;
             const otdRate = totalLines > 0 ? ((onTimeLines / totalLines) * 100).toFixed(2) : 0;
             
+            // Calculate weighted score
+            const weightedScore = calculateWeightedScore();
+            
             document.getElementById('totalLines').textContent = totalLines.toLocaleString();
             document.getElementById('onTimeLines').textContent = onTimeLines.toLocaleString();
             document.getElementById('lateLines').textContent = lateLines.toLocaleString();
             document.getElementById('otdRate').textContent = otdRate + '%';
             document.getElementById('otdProgress').style.width = Math.min(otdRate, 100) + '%';
+            
+            document.getElementById('weightedScore').textContent = weightedScore.toFixed(2);
+            document.getElementById('scoreProgress').style.width = weightedScore + '%';
             
             const alertDiv = document.getElementById('performanceAlert');
             if (parseFloat(otdRate) >= OTD_TARGET) {
@@ -836,6 +890,51 @@
             
             updateCharts();
             updateTable();
+        }
+
+        function calculateWeightedScore() {
+            if (filteredData.length === 0) return 0;
+            
+            // Get scoring weights from inputs (or use defaults)
+            const scoreWeights = {
+                onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
+                late_1_3: parseInt(document.getElementById('points_1_3')?.value || 85),
+                late_4_5: parseInt(document.getElementById('points_4_5')?.value || 70),
+                late_6_7: parseInt(document.getElementById('points_6_7')?.value || 55),
+                late_8_14: parseInt(document.getElementById('points_8_14')?.value || 40),
+                late_15_plus: parseInt(document.getElementById('points_15_plus')?.value || 0)
+            };
+            
+            let totalPoints = 0;
+            
+            filteredData.forEach(row => {
+                const daysLate = row.daysLate;
+                
+                if (daysLate <= 0) {
+                    totalPoints += scoreWeights.onTime;
+                } else if (daysLate <= 3) {
+                    totalPoints += scoreWeights.late_1_3;
+                } else if (daysLate <= 5) {
+                    totalPoints += scoreWeights.late_4_5;
+                } else if (daysLate <= 7) {
+                    totalPoints += scoreWeights.late_6_7;
+                } else if (daysLate <= 14) {
+                    totalPoints += scoreWeights.late_8_14;
+                } else {
+                    totalPoints += scoreWeights.late_15_plus;
+                }
+            });
+            
+            return totalPoints / filteredData.length;
+        }
+
+        function toggleScoringSettings() {
+            const settings = document.getElementById('scoringSettings');
+            settings.style.display = settings.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function updateScoring() {
+            updateDashboard();
         }
 
         function updateCharts() {
@@ -1167,6 +1266,251 @@
             a.click();
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
+        }
+        function exportToExcel() {
+            const totalLines = filteredData.length;
+            const lateLines = filteredData.filter(row => row.isLate).length;
+            const onTimeLines = totalLines - lateLines;
+            const tooEarlyLines = filteredData.filter(row => row.isTooEarly).length;
+            const otdRate = totalLines > 0 ? ((onTimeLines / totalLines) * 100).toFixed(2) : 0;
+            const weightedScore = calculateWeightedScore();
+            
+            const supplierName = document.getElementById('supplierFilter').value;
+            const displaySupplier = supplierName !== 'all' ? supplierName : 'All Suppliers';
+            
+            // Create a new workbook
+            const wb = XLSX.utils.book_new();
+            
+            // ===== SHEET 1: Summary =====
+            const summaryData = [
+                ['SUPPLIER SCORECARD REPORT'],
+                [''],
+                ['Supplier:', displaySupplier],
+                ['Report Date:', new Date().toLocaleDateString()],
+                ['Date Range:', document.getElementById('dateRange').textContent],
+                [''],
+                ['PERFORMANCE METRICS'],
+                ['Metric', 'Value'],
+                ['On-Time Delivery Rate', otdRate + '%'],
+                ['Weighted Score', weightedScore.toFixed(2)],
+                ['Target OTD Rate', OTD_TARGET + '%'],
+                ['Status', parseFloat(otdRate) >= OTD_TARGET ? 'MEETS TARGET ✓' : 'BELOW TARGET'],
+                [''],
+                ['Total Lines Received', totalLines],
+                ['On-Time Lines', onTimeLines],
+                ['Late Lines', lateLines],
+                ['Too Early Lines', tooEarlyLines],
+                [''],
+                ['WEIGHTED SCORE BREAKDOWN'],
+                ['Days Late', 'Points', 'Count'],
+                ['On-Time (≤0 days)', 100, filteredData.filter(r => r.daysLate <= 0).length],
+                ['1-3 days late', 85, filteredData.filter(r => r.daysLate >= 1 && r.daysLate <= 3).length],
+                ['4-5 days late', 70, filteredData.filter(r => r.daysLate >= 4 && r.daysLate <= 5).length],
+                ['6-7 days late', 55, filteredData.filter(r => r.daysLate >= 6 && r.daysLate <= 7).length],
+                ['8-14 days late', 40, filteredData.filter(r => r.daysLate >= 8 && r.daysLate <= 14).length],
+                ['15+ days late', 0, filteredData.filter(r => r.daysLate >= 15).length],
+                [''],
+                ['TOLERANCE SETTINGS'],
+                ['Late Tolerance (Days)', lateTolerance],
+                ['Early Tolerance (Days)', earlyTolerance],
+            ];
+            
+            const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+            
+            // Set column widths
+            ws1['!cols'] = [
+                { wch: 25 },
+                { wch: 30 }
+            ];
+            
+            // Merge title cell
+            ws1['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
+            
+            // ===== SHEET 2: Monthly OTD Trend =====
+            const monthlyData = calculateMonthlyOTD();
+            const monthlySheetData = [
+                ['MONTHLY ON-TIME DELIVERY TREND'],
+                [''],
+                ['Month', 'OTD %', 'Target %']
+            ];
+            
+            monthlyData.labels.forEach((label, index) => {
+                monthlySheetData.push([
+                    label,
+                    monthlyData.otdRates[index],
+                    OTD_TARGET
+                ]);
+            });
+            
+            const ws2 = XLSX.utils.aoa_to_sheet(monthlySheetData);
+            ws2['!cols'] = [
+                { wch: 15 },
+                { wch: 12 },
+                { wch: 12 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws2, 'Monthly Trend');
+            
+            // ===== SHEET 3: Repeat Late Items =====
+            // Find items that are late more than once
+            const itemLateCounts = {};
+            filteredData.forEach(row => {
+                if (row.isLate && row.item) {
+                    const key = `${row.item}|${row.supplier}`;
+                    if (!itemLateCounts[key]) {
+                        itemLateCounts[key] = {
+                            item: row.item,
+                            description: row.description || '',
+                            supplier: row.supplier,
+                            count: 0,
+                            totalDaysLate: 0,
+                            occurrences: []
+                        };
+                    }
+                    itemLateCounts[key].count++;
+                    itemLateCounts[key].totalDaysLate += row.daysLate;
+                    itemLateCounts[key].occurrences.push({
+                        po: row.po,
+                        line: row.line,
+                        dueDate: row.dueDate,
+                        receiptDate: row.receiptDate,
+                        daysLate: row.daysLate
+                    });
+                }
+            });
+            
+            const repeatLateItems = Object.values(itemLateCounts)
+                .filter(item => item.count > 1)
+                .sort((a, b) => b.count - a.count);
+            
+            const repeatLateData = [
+                ['ITEMS LATE MORE THAN ONCE'],
+                [''],
+                ['Item', 'Description', 'Supplier', 'Times Late', 'Avg Days Late', 'Total Days Late']
+            ];
+            
+            repeatLateItems.forEach(item => {
+                const avgDaysLate = (item.totalDaysLate / item.count).toFixed(1);
+                repeatLateData.push([
+                    item.item,
+                    item.description,
+                    item.supplier,
+                    item.count,
+                    avgDaysLate,
+                    item.totalDaysLate
+                ]);
+            });
+            
+            if (repeatLateItems.length === 0) {
+                repeatLateData.push(['No items were late more than once']);
+            }
+            
+            const ws3 = XLSX.utils.aoa_to_sheet(repeatLateData);
+            ws3['!cols'] = [
+                { wch: 15 },
+                { wch: 35 },
+                { wch: 25 },
+                { wch: 12 },
+                { wch: 15 },
+                { wch: 15 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws3, 'Repeat Late Items');
+            
+            // ===== SHEET 4: All Line Items =====
+            const detailData = [
+                ['ALL LINE ITEMS'],
+                [''],
+                ['Supplier', 'PO Number', 'Line', 'Item', 'Description', 'Due Date', 'Receipt Date', 'Days Late/Early', 'Status']
+            ];
+            
+            filteredData.forEach(row => {
+                let status;
+                if (row.isTooEarly) {
+                    status = 'Too Early';
+                } else if (row.isLate) {
+                    status = 'Late';
+                } else {
+                    status = 'On-Time';
+                }
+                
+                detailData.push([
+                    row.supplier,
+                    row.po,
+                    row.line,
+                    row.item || '',
+                    row.description || '',
+                    row.dueDate ? row.dueDate.toLocaleDateString() : '',
+                    row.receiptDate ? row.receiptDate.toLocaleDateString() : '',
+                    row.daysLate,
+                    status
+                ]);
+            });
+            
+            const ws4 = XLSX.utils.aoa_to_sheet(detailData);
+            ws4['!cols'] = [
+                { wch: 25 },
+                { wch: 12 },
+                { wch: 8 },
+                { wch: 15 },
+                { wch: 35 },
+                { wch: 12 },
+                { wch: 12 },
+                { wch: 15 },
+                { wch: 12 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws4, 'All Line Items');
+            
+            // ===== SHEET 5: Late Items Detail =====
+            const lateItemsData = [
+                ['LATE ITEMS DETAIL'],
+                [''],
+                ['Supplier', 'PO Number', 'Line', 'Item', 'Description', 'Due Date', 'Receipt Date', 'Days Late']
+            ];
+            
+            const lateItems = filteredData.filter(row => row.isLate);
+            
+            lateItems.forEach(row => {
+                lateItemsData.push([
+                    row.supplier,
+                    row.po,
+                    row.line,
+                    row.item || '',
+                    row.description || '',
+                    row.dueDate ? row.dueDate.toLocaleDateString() : '',
+                    row.receiptDate ? row.receiptDate.toLocaleDateString() : '',
+                    row.daysLate
+                ]);
+            });
+            
+            if (lateItems.length === 0) {
+                lateItemsData.push(['No late items found']);
+            }
+            
+            const ws5 = XLSX.utils.aoa_to_sheet(lateItemsData);
+            ws5['!cols'] = [
+                { wch: 25 },
+                { wch: 12 },
+                { wch: 8 },
+                { wch: 15 },
+                { wch: 35 },
+                { wch: 12 },
+                { wch: 12 },
+                { wch: 12 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws5, 'Late Items');
+            
+            // Generate filename
+            const filename = `Supplier_Scorecard_${displaySupplier.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+            
+            // Write the file
+            XLSX.writeFile(wb, filename);
         }
     </script>
 </body>
