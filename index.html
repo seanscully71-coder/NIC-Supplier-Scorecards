@@ -656,6 +656,24 @@
                 </div>
             </div>
 
+            <div class="data-table" style="margin-bottom: 2rem;">
+                <h3 class="chart-title" style="margin-bottom: 1.5rem;">Monthly Performance Summary</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Total Lines</th>
+                            <th>On-Time</th>
+                            <th>Late</th>
+                            <th>OTD %</th>
+                            <th>Weighted Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monthlyTableBody">
+                    </tbody>
+                </table>
+            </div>
+
             <div class="data-table">
                 <h3 class="chart-title" style="margin-bottom: 1.5rem;">Detailed Line Items</h3>
                 <table>
@@ -668,6 +686,7 @@
                             <th>Due Date</th>
                             <th>Receipt Date</th>
                             <th>Days Late</th>
+                            <th>Score</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -889,6 +908,7 @@
             }
             
             updateCharts();
+            updateMonthlyTable();
             updateTable();
         }
 
@@ -1165,16 +1185,177 @@
             };
         }
 
+        function updateMonthlyTable() {
+            const tbody = document.getElementById('monthlyTableBody');
+            tbody.innerHTML = '';
+            
+            if (filteredData.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="6" style="text-align: center; color: var(--text-secondary);">No data available</td>';
+                tbody.appendChild(tr);
+                return;
+            }
+            
+            // Group data by month based on receipt date
+            const monthlyStats = {};
+            
+            // Get scoring weights
+            const scoreWeights = {
+                onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
+                late_1_3: parseInt(document.getElementById('points_1_3')?.value || 85),
+                late_4_5: parseInt(document.getElementById('points_4_5')?.value || 70),
+                late_6_7: parseInt(document.getElementById('points_6_7')?.value || 55),
+                late_8_14: parseInt(document.getElementById('points_8_14')?.value || 40),
+                late_15_plus: parseInt(document.getElementById('points_15_plus')?.value || 0)
+            };
+            
+            filteredData.forEach(row => {
+                if (row.receiptDate) {
+                    const monthKey = `${row.receiptDate.getFullYear()}-${String(row.receiptDate.getMonth() + 1).padStart(2, '0')}`;
+                    
+                    if (!monthlyStats[monthKey]) {
+                        monthlyStats[monthKey] = {
+                            total: 0,
+                            onTime: 0,
+                            late: 0,
+                            totalPoints: 0,
+                            date: new Date(row.receiptDate.getFullYear(), row.receiptDate.getMonth(), 1)
+                        };
+                    }
+                    
+                    monthlyStats[monthKey].total++;
+                    if (!row.isLate) {
+                        monthlyStats[monthKey].onTime++;
+                    } else {
+                        monthlyStats[monthKey].late++;
+                    }
+                    
+                    // Calculate score for this line
+                    const daysLate = row.daysLate;
+                    let lineScore;
+                    if (daysLate <= 0) {
+                        lineScore = scoreWeights.onTime;
+                    } else if (daysLate <= 3) {
+                        lineScore = scoreWeights.late_1_3;
+                    } else if (daysLate <= 5) {
+                        lineScore = scoreWeights.late_4_5;
+                    } else if (daysLate <= 7) {
+                        lineScore = scoreWeights.late_6_7;
+                    } else if (daysLate <= 14) {
+                        lineScore = scoreWeights.late_8_14;
+                    } else {
+                        lineScore = scoreWeights.late_15_plus;
+                    }
+                    
+                    monthlyStats[monthKey].totalPoints += lineScore;
+                }
+            });
+            
+            // Sort by date and create table rows
+            const sortedMonths = Object.entries(monthlyStats)
+                .sort((a, b) => a[1].date - b[1].date);
+            
+            sortedMonths.forEach(([monthKey, stats]) => {
+                const tr = document.createElement('tr');
+                
+                const monthLabel = stats.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+                const otdRate = ((stats.onTime / stats.total) * 100).toFixed(2);
+                const weightedScore = (stats.totalPoints / stats.total).toFixed(2);
+                
+                // Color coding for OTD
+                let otdColor;
+                if (parseFloat(otdRate) >= OTD_TARGET) {
+                    otdColor = 'var(--success)';
+                } else if (parseFloat(otdRate) >= 90) {
+                    otdColor = 'var(--warning)';
+                } else {
+                    otdColor = 'var(--danger)';
+                }
+                
+                // Color coding for weighted score
+                let scoreColor;
+                if (parseFloat(weightedScore) >= 90) {
+                    scoreColor = 'var(--success)';
+                } else if (parseFloat(weightedScore) >= 70) {
+                    scoreColor = 'var(--accent)';
+                } else if (parseFloat(weightedScore) >= 40) {
+                    scoreColor = 'var(--warning)';
+                } else {
+                    scoreColor = 'var(--danger)';
+                }
+                
+                tr.innerHTML = `
+                    <td style="font-weight: 600;">${monthLabel}</td>
+                    <td>${stats.total}</td>
+                    <td style="color: var(--success)">${stats.onTime}</td>
+                    <td style="color: var(--danger)">${stats.late}</td>
+                    <td style="color: ${otdColor}; font-weight: 600;">${otdRate}%</td>
+                    <td style="color: ${scoreColor}; font-weight: 600;">${weightedScore}</td>
+                `;
+                
+                tbody.appendChild(tr);
+            });
+            
+            // Add overall average row
+            if (sortedMonths.length > 0) {
+                const totalLines = filteredData.length;
+                const totalOnTime = filteredData.filter(row => !row.isLate).length;
+                const totalLate = totalLines - totalOnTime;
+                const overallOTD = ((totalOnTime / totalLines) * 100).toFixed(2);
+                const overallScore = calculateWeightedScore().toFixed(2);
+                
+                const tr = document.createElement('tr');
+                tr.style.borderTop = '2px solid var(--accent)';
+                tr.style.fontWeight = '600';
+                tr.innerHTML = `
+                    <td style="color: var(--accent);">OVERALL</td>
+                    <td>${totalLines}</td>
+                    <td style="color: var(--success)">${totalOnTime}</td>
+                    <td style="color: var(--danger)">${totalLate}</td>
+                    <td style="color: var(--accent)">${overallOTD}%</td>
+                    <td style="color: var(--accent)">${overallScore}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
         function updateTable() {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
             
             const displayData = filteredData.slice(0, 100);
             
+            // Get scoring weights
+            const scoreWeights = {
+                onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
+                late_1_3: parseInt(document.getElementById('points_1_3')?.value || 85),
+                late_4_5: parseInt(document.getElementById('points_4_5')?.value || 70),
+                late_6_7: parseInt(document.getElementById('points_6_7')?.value || 55),
+                late_8_14: parseInt(document.getElementById('points_8_14')?.value || 40),
+                late_15_plus: parseInt(document.getElementById('points_15_plus')?.value || 0)
+            };
+            
             displayData.forEach(row => {
                 const tr = document.createElement('tr');
                 
                 const daysLateText = row.daysLate > 0 ? `+${row.daysLate}` : row.daysLate;
+                
+                // Calculate score for this line
+                let lineScore;
+                const daysLate = row.daysLate;
+                if (daysLate <= 0) {
+                    lineScore = scoreWeights.onTime;
+                } else if (daysLate <= 3) {
+                    lineScore = scoreWeights.late_1_3;
+                } else if (daysLate <= 5) {
+                    lineScore = scoreWeights.late_4_5;
+                } else if (daysLate <= 7) {
+                    lineScore = scoreWeights.late_6_7;
+                } else if (daysLate <= 14) {
+                    lineScore = scoreWeights.late_8_14;
+                } else {
+                    lineScore = scoreWeights.late_15_plus;
+                }
                 
                 // Determine status based on tolerance
                 let statusClass, statusText;
@@ -1199,6 +1380,18 @@
                     daysColor = 'var(--success)';
                 }
                 
+                // Color the score
+                let scoreColor;
+                if (lineScore >= 90) {
+                    scoreColor = 'var(--success)';
+                } else if (lineScore >= 70) {
+                    scoreColor = 'var(--accent)';
+                } else if (lineScore >= 40) {
+                    scoreColor = 'var(--warning)';
+                } else {
+                    scoreColor = 'var(--danger)';
+                }
+                
                 tr.innerHTML = `
                     <td>${row.supplier}</td>
                     <td>${row.po}</td>
@@ -1207,6 +1400,7 @@
                     <td>${row.dueDate ? row.dueDate.toLocaleDateString() : '-'}</td>
                     <td>${row.receiptDate ? row.receiptDate.toLocaleDateString() : '-'}</td>
                     <td style="color: ${daysColor}">${daysLateText}</td>
+                    <td style="color: ${scoreColor}; font-weight: 600;">${lineScore}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                 `;
                 
@@ -1215,7 +1409,7 @@
             
             if (filteredData.length > 100) {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td colspan="8" style="text-align: center; color: var(--text-secondary);">Showing first 100 of ${filteredData.length} lines</td>`;
+                tr.innerHTML = `<td colspan="9" style="text-align: center; color: var(--text-secondary);">Showing first 100 of ${filteredData.length} lines</td>`;
                 tbody.appendChild(tr);
             }
         }
@@ -1330,7 +1524,100 @@
             
             XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
             
-            // ===== SHEET 2: Monthly OTD Trend =====
+            // ===== SHEET 2: Monthly Scores =====
+            const monthlyScoresData = [
+                ['MONTHLY PERFORMANCE SUMMARY'],
+                [''],
+                ['Month', 'Total Lines', 'On-Time Lines', 'Late Lines', 'OTD %', 'Weighted Score']
+            ];
+            
+            // Group data by month
+            const monthlyStatsExport = {};
+            filteredData.forEach(row => {
+                if (row.receiptDate) {
+                    const monthKey = `${row.receiptDate.getFullYear()}-${String(row.receiptDate.getMonth() + 1).padStart(2, '0')}`;
+                    
+                    if (!monthlyStatsExport[monthKey]) {
+                        monthlyStatsExport[monthKey] = {
+                            total: 0,
+                            onTime: 0,
+                            late: 0,
+                            totalPoints: 0,
+                            date: new Date(row.receiptDate.getFullYear(), row.receiptDate.getMonth(), 1)
+                        };
+                    }
+                    
+                    monthlyStatsExport[monthKey].total++;
+                    if (!row.isLate) {
+                        monthlyStatsExport[monthKey].onTime++;
+                    } else {
+                        monthlyStatsExport[monthKey].late++;
+                    }
+                    
+                    // Calculate score
+                    const daysLate = row.daysLate;
+                    let lineScore;
+                    if (daysLate <= 0) lineScore = scoreWeightsExport.onTime;
+                    else if (daysLate <= 3) lineScore = scoreWeightsExport.late_1_3;
+                    else if (daysLate <= 5) lineScore = scoreWeightsExport.late_4_5;
+                    else if (daysLate <= 7) lineScore = scoreWeightsExport.late_6_7;
+                    else if (daysLate <= 14) lineScore = scoreWeightsExport.late_8_14;
+                    else lineScore = scoreWeightsExport.late_15_plus;
+                    
+                    monthlyStatsExport[monthKey].totalPoints += lineScore;
+                }
+            });
+            
+            // Sort and add to sheet
+            const sortedMonthsExport = Object.entries(monthlyStatsExport)
+                .sort((a, b) => a[1].date - b[1].date);
+            
+            sortedMonthsExport.forEach(([monthKey, stats]) => {
+                const monthLabel = stats.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+                const otdRate = ((stats.onTime / stats.total) * 100).toFixed(2);
+                const weightedScore = (stats.totalPoints / stats.total).toFixed(2);
+                
+                monthlyScoresData.push([
+                    monthLabel,
+                    stats.total,
+                    stats.onTime,
+                    stats.late,
+                    parseFloat(otdRate),
+                    parseFloat(weightedScore)
+                ]);
+            });
+            
+            // Add overall row
+            if (sortedMonthsExport.length > 0) {
+                const totalLines = filteredData.length;
+                const totalOnTime = filteredData.filter(row => !row.isLate).length;
+                const totalLate = totalLines - totalOnTime;
+                const overallOTD = ((totalOnTime / totalLines) * 100).toFixed(2);
+                
+                monthlyScoresData.push(['']); // Empty row
+                monthlyScoresData.push([
+                    'OVERALL',
+                    totalLines,
+                    totalOnTime,
+                    totalLate,
+                    parseFloat(overallOTD),
+                    parseFloat(weightedScore.toFixed(2))
+                ]);
+            }
+            
+            const ws2 = XLSX.utils.aoa_to_sheet(monthlyScoresData);
+            ws2['!cols'] = [
+                { wch: 15 },
+                { wch: 12 },
+                { wch: 15 },
+                { wch: 12 },
+                { wch: 12 },
+                { wch: 15 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws2, 'Monthly Scores');
+            
+            // ===== SHEET 3: Monthly OTD Trend =====
             const monthlyData = calculateMonthlyOTD();
             const monthlySheetData = [
                 ['MONTHLY ON-TIME DELIVERY TREND'],
@@ -1346,16 +1633,16 @@
                 ]);
             });
             
-            const ws2 = XLSX.utils.aoa_to_sheet(monthlySheetData);
-            ws2['!cols'] = [
+            const ws3 = XLSX.utils.aoa_to_sheet(monthlySheetData);
+            ws4_repeat['!cols'] = [
                 { wch: 15 },
                 { wch: 12 },
                 { wch: 12 }
             ];
             
-            XLSX.utils.book_append_sheet(wb, ws2, 'Monthly Trend');
+            XLSX.utils.book_append_sheet(wb, ws3, 'Monthly Trend');
             
-            // ===== SHEET 3: Repeat Late Items =====
+            // ===== SHEET 4: Repeat Late Items =====
             // Find items that are late more than once
             const itemLateCounts = {};
             filteredData.forEach(row => {
@@ -1409,8 +1696,8 @@
                 repeatLateData.push(['No items were late more than once']);
             }
             
-            const ws3 = XLSX.utils.aoa_to_sheet(repeatLateData);
-            ws3['!cols'] = [
+            const ws4_repeat = XLSX.utils.aoa_to_sheet(repeatLateData);
+            ws4_repeat['!cols'] = [
                 { wch: 15 },
                 { wch: 35 },
                 { wch: 25 },
@@ -1419,14 +1706,24 @@
                 { wch: 15 }
             ];
             
-            XLSX.utils.book_append_sheet(wb, ws3, 'Repeat Late Items');
+            XLSX.utils.book_append_sheet(wb, ws4_repeat, 'Repeat Late Items');
             
-            // ===== SHEET 4: All Line Items =====
+            // ===== SHEET 5: All Line Items =====
             const detailData = [
                 ['ALL LINE ITEMS'],
                 [''],
-                ['Supplier', 'PO Number', 'Line', 'Item', 'Description', 'Due Date', 'Receipt Date', 'Days Late/Early', 'Status']
+                ['Supplier', 'PO Number', 'Line', 'Item', 'Description', 'Due Date', 'Receipt Date', 'Days Late/Early', 'Score', 'Status']
             ];
+            
+            // Get scoring weights
+            const scoreWeightsExport = {
+                onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
+                late_1_3: parseInt(document.getElementById('points_1_3')?.value || 85),
+                late_4_5: parseInt(document.getElementById('points_4_5')?.value || 70),
+                late_6_7: parseInt(document.getElementById('points_6_7')?.value || 55),
+                late_8_14: parseInt(document.getElementById('points_8_14')?.value || 40),
+                late_15_plus: parseInt(document.getElementById('points_15_plus')?.value || 0)
+            };
             
             filteredData.forEach(row => {
                 let status;
@@ -1438,6 +1735,23 @@
                     status = 'On-Time';
                 }
                 
+                // Calculate line score
+                const daysLate = row.daysLate;
+                let lineScore;
+                if (daysLate <= 0) {
+                    lineScore = scoreWeightsExport.onTime;
+                } else if (daysLate <= 3) {
+                    lineScore = scoreWeightsExport.late_1_3;
+                } else if (daysLate <= 5) {
+                    lineScore = scoreWeightsExport.late_4_5;
+                } else if (daysLate <= 7) {
+                    lineScore = scoreWeightsExport.late_6_7;
+                } else if (daysLate <= 14) {
+                    lineScore = scoreWeightsExport.late_8_14;
+                } else {
+                    lineScore = scoreWeightsExport.late_15_plus;
+                }
+                
                 detailData.push([
                     row.supplier,
                     row.po,
@@ -1447,12 +1761,13 @@
                     row.dueDate ? row.dueDate.toLocaleDateString() : '',
                     row.receiptDate ? row.receiptDate.toLocaleDateString() : '',
                     row.daysLate,
+                    lineScore,
                     status
                 ]);
             });
             
-            const ws4 = XLSX.utils.aoa_to_sheet(detailData);
-            ws4['!cols'] = [
+            const ws5 = XLSX.utils.aoa_to_sheet(detailData);
+            ws6['!cols'] = [
                 { wch: 25 },
                 { wch: 12 },
                 { wch: 8 },
@@ -1461,12 +1776,13 @@
                 { wch: 12 },
                 { wch: 12 },
                 { wch: 15 },
+                { wch: 10 },
                 { wch: 12 }
             ];
             
-            XLSX.utils.book_append_sheet(wb, ws4, 'All Line Items');
+            XLSX.utils.book_append_sheet(wb, ws5, 'All Line Items');
             
-            // ===== SHEET 5: Late Items Detail =====
+            // ===== SHEET 6: Late Items Detail =====
             const lateItemsData = [
                 ['LATE ITEMS DETAIL'],
                 [''],
@@ -1492,8 +1808,8 @@
                 lateItemsData.push(['No late items found']);
             }
             
-            const ws5 = XLSX.utils.aoa_to_sheet(lateItemsData);
-            ws5['!cols'] = [
+            const ws6 = XLSX.utils.aoa_to_sheet(lateItemsData);
+            ws6['!cols'] = [
                 { wch: 25 },
                 { wch: 12 },
                 { wch: 8 },
@@ -1504,7 +1820,7 @@
                 { wch: 12 }
             ];
             
-            XLSX.utils.book_append_sheet(wb, ws5, 'Late Items');
+            XLSX.utils.book_append_sheet(wb, ws6, 'Late Items');
             
             // Generate filename
             const filename = `Supplier_Scorecard_${displaySupplier.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
