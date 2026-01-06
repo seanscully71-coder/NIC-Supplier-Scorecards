@@ -1472,6 +1472,16 @@
             const supplierName = document.getElementById('supplierFilter').value;
             const displaySupplier = supplierName !== 'all' ? supplierName : 'All Suppliers';
             
+            // Get scoring weights for export
+            const scoreWeightsExport = {
+                onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
+                late_1_3: parseInt(document.getElementById('points_1_3')?.value || 85),
+                late_4_5: parseInt(document.getElementById('points_4_5')?.value || 70),
+                late_6_7: parseInt(document.getElementById('points_6_7')?.value || 55),
+                late_8_14: parseInt(document.getElementById('points_8_14')?.value || 40),
+                late_15_plus: parseInt(document.getElementById('points_15_plus')?.value || 0)
+            };
+            
             // Create a new workbook
             const wb = XLSX.utils.book_new();
             
@@ -1497,12 +1507,12 @@
                 [''],
                 ['WEIGHTED SCORE BREAKDOWN'],
                 ['Days Late', 'Points', 'Count'],
-                ['On-Time (≤0 days)', 100, filteredData.filter(r => r.daysLate <= 0).length],
-                ['1-3 days late', 85, filteredData.filter(r => r.daysLate >= 1 && r.daysLate <= 3).length],
-                ['4-5 days late', 70, filteredData.filter(r => r.daysLate >= 4 && r.daysLate <= 5).length],
-                ['6-7 days late', 55, filteredData.filter(r => r.daysLate >= 6 && r.daysLate <= 7).length],
-                ['8-14 days late', 40, filteredData.filter(r => r.daysLate >= 8 && r.daysLate <= 14).length],
-                ['15+ days late', 0, filteredData.filter(r => r.daysLate >= 15).length],
+                ['On-Time (≤0 days)', scoreWeightsExport.onTime, filteredData.filter(r => r.daysLate <= 0).length],
+                ['1-3 days late', scoreWeightsExport.late_1_3, filteredData.filter(r => r.daysLate >= 1 && r.daysLate <= 3).length],
+                ['4-5 days late', scoreWeightsExport.late_4_5, filteredData.filter(r => r.daysLate >= 4 && r.daysLate <= 5).length],
+                ['6-7 days late', scoreWeightsExport.late_6_7, filteredData.filter(r => r.daysLate >= 6 && r.daysLate <= 7).length],
+                ['8-14 days late', scoreWeightsExport.late_8_14, filteredData.filter(r => r.daysLate >= 8 && r.daysLate <= 14).length],
+                ['15+ days late', scoreWeightsExport.late_15_plus, filteredData.filter(r => r.daysLate >= 15).length],
                 [''],
                 ['TOLERANCE SETTINGS'],
                 ['Late Tolerance (Days)', lateTolerance],
