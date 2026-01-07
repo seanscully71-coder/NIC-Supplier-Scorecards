@@ -589,19 +589,19 @@
                         </div>
                         <div>
                             <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">1-3 days late</label>
-                            <input type="number" id="points_1_3" value="85" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                            <input type="number" id="points_1_3" value="75" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
                         </div>
                         <div>
                             <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">4-5 days late</label>
-                            <input type="number" id="points_4_5" value="70" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                            <input type="number" id="points_4_5" value="50" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
                         </div>
                         <div>
                             <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">6-7 days late</label>
-                            <input type="number" id="points_6_7" value="55" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                            <input type="number" id="points_6_7" value="25" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
                         </div>
                         <div>
                             <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">8-14 days late</label>
-                            <input type="number" id="points_8_14" value="40" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                            <input type="number" id="points_8_14" value="10" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
                         </div>
                         <div>
                             <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">15+ days late</label>
@@ -636,7 +636,7 @@
                 <div class="metric-card">
                     <div class="metric-label">Weighted Score</div>
                     <div class="metric-value accent" id="weightedScore">0</div>
-                    <div class="metric-subtitle">Based on lateness severity</div>
+                    <div class="metric-subtitle">Target: 98.5</div>
                     <div class="progress-bar">
                         <div class="progress-fill" id="scoreProgress" style="width: 0%"></div>
                     </div>
@@ -688,7 +688,7 @@
                             <th>On-Time</th>
                             <th>Late</th>
                             <th>OTD %</th>
-                            <th>Weighted Score</th>
+                            <th>OTD Score</th>
                         </tr>
                     </thead>
                     <tbody id="monthlyTableBody">
@@ -932,12 +932,13 @@
             document.getElementById('scoreProgress').style.width = weightedScore + '%';
             
             const alertDiv = document.getElementById('performanceAlert');
-            if (parseFloat(otdRate) >= OTD_TARGET) {
+            const score = calculateWeightedScore();
+            if (score >= 98.5) {
                 alertDiv.innerHTML = `
                     <div class="alert success">
                         <div class="alert-icon">✓</div>
                         <div>
-                            <strong>Excellent Performance!</strong> OTD rate of ${otdRate}% meets or exceeds the target of ${OTD_TARGET}%
+                            <strong>Excellent Performance!</strong> OTD Score of ${score.toFixed(2)} meets or exceeds the target of 98.5 (OTD Rate: ${otdRate}%)
                         </div>
                     </div>
                 `;
@@ -946,7 +947,7 @@
                     <div class="alert warning">
                         <div class="alert-icon">⚠</div>
                         <div>
-                            <strong>Below Target:</strong> OTD rate of ${otdRate}% is ${(OTD_TARGET - parseFloat(otdRate)).toFixed(2)}% below the ${OTD_TARGET}% target
+                            <strong>Below Target:</strong> OTD Score of ${score.toFixed(2)} is ${(98.5 - score).toFixed(2)} points below the target of 98.5 (OTD Rate: ${otdRate}%)
                         </div>
                     </div>
                 `;
@@ -978,10 +979,10 @@
             // Get scoring weights from inputs (or use defaults)
             const scoreWeights = {
                 onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
-                late_1_3: parseInt(document.getElementById('points_1_3')?.value || 85),
-                late_4_5: parseInt(document.getElementById('points_4_5')?.value || 70),
-                late_6_7: parseInt(document.getElementById('points_6_7')?.value || 55),
-                late_8_14: parseInt(document.getElementById('points_8_14')?.value || 40),
+                late_1_3: parseInt(document.getElementById('points_1_3')?.value || 75),
+                late_4_5: parseInt(document.getElementById('points_4_5')?.value || 50),
+                late_6_7: parseInt(document.getElementById('points_6_7')?.value || 25),
+                late_8_14: parseInt(document.getElementById('points_8_14')?.value || 10),
                 late_15_plus: parseInt(document.getElementById('points_15_plus')?.value || 0)
             };
             
@@ -1334,11 +1335,9 @@
                 
                 // Color coding for weighted score
                 let scoreColor;
-                if (parseFloat(weightedScore) >= 90) {
+                if (parseFloat(weightedScore) >= 98.5) {
                     scoreColor = 'var(--success)';
-                } else if (parseFloat(weightedScore) >= 70) {
-                    scoreColor = 'var(--accent)';
-                } else if (parseFloat(weightedScore) >= 40) {
+                } else if (parseFloat(weightedScore) >= 90) {
                     scoreColor = 'var(--warning)';
                 } else {
                     scoreColor = 'var(--danger)';
@@ -1537,10 +1536,10 @@
                 // Get scoring weights for export
                 const scoreWeightsExport = {
                     onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
-                    late_1_3: parseInt(document.getElementById('points_1_3')?.value || 85),
-                    late_4_5: parseInt(document.getElementById('points_4_5')?.value || 70),
-                    late_6_7: parseInt(document.getElementById('points_6_7')?.value || 55),
-                    late_8_14: parseInt(document.getElementById('points_8_14')?.value || 40),
+                    late_1_3: parseInt(document.getElementById('points_1_3')?.value || 75),
+                    late_4_5: parseInt(document.getElementById('points_4_5')?.value || 50),
+                    late_6_7: parseInt(document.getElementById('points_6_7')?.value || 25),
+                    late_8_14: parseInt(document.getElementById('points_8_14')?.value || 10),
                     late_15_plus: parseInt(document.getElementById('points_15_plus')?.value || 0)
                 };
                 
@@ -1601,7 +1600,7 @@
             const monthlyScoresData = [
                 ['MONTHLY PERFORMANCE SUMMARY'],
                 [''],
-                ['Month', 'Total Lines', 'On-Time Lines', 'Late Lines', 'OTD %', 'Weighted Score']
+                ['Month', 'Total Lines', 'On-Time Lines', 'Late Lines', 'OTD %', 'OTD Score']
             ];
             
             // Group data by month
