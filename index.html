@@ -582,34 +582,47 @@
                 </div>
                 <div id="scoringSettings" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(0, 217, 184, 0.05); border-radius: 8px; border: 1px solid var(--border);">
                     <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--accent);">Weighted Score Points</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+                        <div style="grid-column: 1 / -1; font-weight: 600; color: var(--text-primary); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">On-Time Window</div>
                         <div>
-                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">On-Time (≤0d)</label>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">On-Time (0 days)</label>
                             <input type="number" id="points_ontime" value="100" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
                         </div>
+                        
+                        <div style="grid-column: 1 / -1; font-weight: 600; color: var(--warning); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 0.5rem;">Early Deliveries</div>
                         <div>
-                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">1-3 days late</label>
-                            <input type="number" id="points_1_3" value="75" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">1-2 days early</label>
+                            <input type="number" id="points_early_1_2" value="100" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
                         </div>
                         <div>
-                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">4-5 days late</label>
-                            <input type="number" id="points_4_5" value="50" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">3-5 days early</label>
+                            <input type="number" id="points_early_3_5" value="75" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
                         </div>
                         <div>
-                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">6-7 days late</label>
-                            <input type="number" id="points_6_7" value="25" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">6-8 days early</label>
+                            <input type="number" id="points_early_6_8" value="50" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
                         </div>
                         <div>
-                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">8-14 days late</label>
-                            <input type="number" id="points_8_14" value="10" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">9+ days early</label>
+                            <input type="number" id="points_early_9_plus" value="0" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        
+                        <div style="grid-column: 1 / -1; font-weight: 600; color: var(--danger); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 0.5rem;">Late Deliveries</div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">1-2 days late</label>
+                            <input type="number" id="points_late_1_2" value="75" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
                         </div>
                         <div>
-                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">15+ days late</label>
-                            <input type="number" id="points_15_plus" value="0" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">3-5 days late</label>
+                            <input type="number" id="points_late_3_5" value="50" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">6+ days late</label>
+                            <input type="number" id="points_late_6_plus" value="0" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
                         </div>
                     </div>
                     <div style="margin-top: 0.75rem; font-size: 0.75rem; color: var(--text-secondary);">
-                        Adjust these values to match your organization's scoring system.
+                        Official scoring system: On-time = 100, Early/Late deliveries scored by severity.
                     </div>
                 </div>
                 <div style="margin-top: 1rem; padding: 1rem; background: rgba(0, 217, 184, 0.05); border-radius: 8px; border-left: 3px solid var(--accent);">
@@ -976,34 +989,51 @@
         function calculateWeightedScore() {
             if (filteredData.length === 0) return 0;
             
-            // Get scoring weights from inputs (or use defaults)
+            // Get scoring weights from inputs (or use defaults matching official system)
             const scoreWeights = {
                 onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
-                late_1_3: parseInt(document.getElementById('points_1_3')?.value || 75),
-                late_4_5: parseInt(document.getElementById('points_4_5')?.value || 50),
-                late_6_7: parseInt(document.getElementById('points_6_7')?.value || 25),
-                late_8_14: parseInt(document.getElementById('points_8_14')?.value || 10),
-                late_15_plus: parseInt(document.getElementById('points_15_plus')?.value || 0)
+                early_1_2: parseInt(document.getElementById('points_early_1_2')?.value || 100),
+                early_3_5: parseInt(document.getElementById('points_early_3_5')?.value || 75),
+                early_6_8: parseInt(document.getElementById('points_early_6_8')?.value || 50),
+                early_9_plus: parseInt(document.getElementById('points_early_9_plus')?.value || 0),
+                late_1_2: parseInt(document.getElementById('points_late_1_2')?.value || 75),
+                late_3_5: parseInt(document.getElementById('points_late_3_5')?.value || 50),
+                late_6_plus: parseInt(document.getElementById('points_late_6_plus')?.value || 0)
             };
             
             let totalPoints = 0;
             
             filteredData.forEach(row => {
                 const daysLate = row.daysLate;
+                let lineScore;
                 
-                if (daysLate <= 0) {
-                    totalPoints += scoreWeights.onTime;
-                } else if (daysLate <= 3) {
-                    totalPoints += scoreWeights.late_1_3;
-                } else if (daysLate <= 5) {
-                    totalPoints += scoreWeights.late_4_5;
-                } else if (daysLate <= 7) {
-                    totalPoints += scoreWeights.late_6_7;
-                } else if (daysLate <= 14) {
-                    totalPoints += scoreWeights.late_8_14;
+                if (daysLate === 0) {
+                    // Exactly on time
+                    lineScore = scoreWeights.onTime;
+                } else if (daysLate < 0) {
+                    // Early delivery (negative days)
+                    const daysEarly = Math.abs(daysLate);
+                    if (daysEarly <= 2) {
+                        lineScore = scoreWeights.early_1_2;
+                    } else if (daysEarly <= 5) {
+                        lineScore = scoreWeights.early_3_5;
+                    } else if (daysEarly <= 8) {
+                        lineScore = scoreWeights.early_6_8;
+                    } else {
+                        lineScore = scoreWeights.early_9_plus;
+                    }
                 } else {
-                    totalPoints += scoreWeights.late_15_plus;
+                    // Late delivery (positive days)
+                    if (daysLate <= 2) {
+                        lineScore = scoreWeights.late_1_2;
+                    } else if (daysLate <= 5) {
+                        lineScore = scoreWeights.late_3_5;
+                    } else {
+                        lineScore = scoreWeights.late_6_plus;
+                    }
                 }
+                
+                totalPoints += lineScore;
             });
             
             return totalPoints / filteredData.length;
@@ -1263,11 +1293,13 @@
             // Get scoring weights
             const scoreWeights = {
                 onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
-                late_1_3: parseInt(document.getElementById('points_1_3')?.value || 85),
-                late_4_5: parseInt(document.getElementById('points_4_5')?.value || 70),
-                late_6_7: parseInt(document.getElementById('points_6_7')?.value || 55),
-                late_8_14: parseInt(document.getElementById('points_8_14')?.value || 40),
-                late_15_plus: parseInt(document.getElementById('points_15_plus')?.value || 0)
+                early_1_2: parseInt(document.getElementById('points_early_1_2')?.value || 100),
+                early_3_5: parseInt(document.getElementById('points_early_3_5')?.value || 75),
+                early_6_8: parseInt(document.getElementById('points_early_6_8')?.value || 50),
+                early_9_plus: parseInt(document.getElementById('points_early_9_plus')?.value || 0),
+                late_1_2: parseInt(document.getElementById('points_late_1_2')?.value || 75),
+                late_3_5: parseInt(document.getElementById('points_late_3_5')?.value || 50),
+                late_6_plus: parseInt(document.getElementById('points_late_6_plus')?.value || 0)
             };
             
             filteredData.forEach(row => {
@@ -1294,18 +1326,28 @@
                     // Calculate score for this line
                     const daysLate = row.daysLate;
                     let lineScore;
-                    if (daysLate <= 0) {
+                    
+                    if (daysLate === 0) {
                         lineScore = scoreWeights.onTime;
-                    } else if (daysLate <= 3) {
-                        lineScore = scoreWeights.late_1_3;
-                    } else if (daysLate <= 5) {
-                        lineScore = scoreWeights.late_4_5;
-                    } else if (daysLate <= 7) {
-                        lineScore = scoreWeights.late_6_7;
-                    } else if (daysLate <= 14) {
-                        lineScore = scoreWeights.late_8_14;
+                    } else if (daysLate < 0) {
+                        const daysEarly = Math.abs(daysLate);
+                        if (daysEarly <= 2) {
+                            lineScore = scoreWeights.early_1_2;
+                        } else if (daysEarly <= 5) {
+                            lineScore = scoreWeights.early_3_5;
+                        } else if (daysEarly <= 8) {
+                            lineScore = scoreWeights.early_6_8;
+                        } else {
+                            lineScore = scoreWeights.early_9_plus;
+                        }
                     } else {
-                        lineScore = scoreWeights.late_15_plus;
+                        if (daysLate <= 2) {
+                            lineScore = scoreWeights.late_1_2;
+                        } else if (daysLate <= 5) {
+                            lineScore = scoreWeights.late_3_5;
+                        } else {
+                            lineScore = scoreWeights.late_6_plus;
+                        }
                     }
                     
                     monthlyStats[monthKey].totalPoints += lineScore;
@@ -1387,11 +1429,13 @@
             // Get scoring weights
             const scoreWeights = {
                 onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
-                late_1_3: parseInt(document.getElementById('points_1_3')?.value || 85),
-                late_4_5: parseInt(document.getElementById('points_4_5')?.value || 70),
-                late_6_7: parseInt(document.getElementById('points_6_7')?.value || 55),
-                late_8_14: parseInt(document.getElementById('points_8_14')?.value || 40),
-                late_15_plus: parseInt(document.getElementById('points_15_plus')?.value || 0)
+                early_1_2: parseInt(document.getElementById('points_early_1_2')?.value || 100),
+                early_3_5: parseInt(document.getElementById('points_early_3_5')?.value || 75),
+                early_6_8: parseInt(document.getElementById('points_early_6_8')?.value || 50),
+                early_9_plus: parseInt(document.getElementById('points_early_9_plus')?.value || 0),
+                late_1_2: parseInt(document.getElementById('points_late_1_2')?.value || 75),
+                late_3_5: parseInt(document.getElementById('points_late_3_5')?.value || 50),
+                late_6_plus: parseInt(document.getElementById('points_late_6_plus')?.value || 0)
             };
             
             displayData.forEach(row => {
@@ -1402,18 +1446,28 @@
                 // Calculate score for this line
                 let lineScore;
                 const daysLate = row.daysLate;
-                if (daysLate <= 0) {
+                
+                if (daysLate === 0) {
                     lineScore = scoreWeights.onTime;
-                } else if (daysLate <= 3) {
-                    lineScore = scoreWeights.late_1_3;
-                } else if (daysLate <= 5) {
-                    lineScore = scoreWeights.late_4_5;
-                } else if (daysLate <= 7) {
-                    lineScore = scoreWeights.late_6_7;
-                } else if (daysLate <= 14) {
-                    lineScore = scoreWeights.late_8_14;
+                } else if (daysLate < 0) {
+                    const daysEarly = Math.abs(daysLate);
+                    if (daysEarly <= 2) {
+                        lineScore = scoreWeights.early_1_2;
+                    } else if (daysEarly <= 5) {
+                        lineScore = scoreWeights.early_3_5;
+                    } else if (daysEarly <= 8) {
+                        lineScore = scoreWeights.early_6_8;
+                    } else {
+                        lineScore = scoreWeights.early_9_plus;
+                    }
                 } else {
-                    lineScore = scoreWeights.late_15_plus;
+                    if (daysLate <= 2) {
+                        lineScore = scoreWeights.late_1_2;
+                    } else if (daysLate <= 5) {
+                        lineScore = scoreWeights.late_3_5;
+                    } else {
+                        lineScore = scoreWeights.late_6_plus;
+                    }
                 }
                 
                 // Determine status based on tolerance
@@ -1536,11 +1590,13 @@
                 // Get scoring weights for export
                 const scoreWeightsExport = {
                     onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
-                    late_1_3: parseInt(document.getElementById('points_1_3')?.value || 75),
-                    late_4_5: parseInt(document.getElementById('points_4_5')?.value || 50),
-                    late_6_7: parseInt(document.getElementById('points_6_7')?.value || 25),
-                    late_8_14: parseInt(document.getElementById('points_8_14')?.value || 10),
-                    late_15_plus: parseInt(document.getElementById('points_15_plus')?.value || 0)
+                    early_1_2: parseInt(document.getElementById('points_early_1_2')?.value || 100),
+                    early_3_5: parseInt(document.getElementById('points_early_3_5')?.value || 75),
+                    early_6_8: parseInt(document.getElementById('points_early_6_8')?.value || 50),
+                    early_9_plus: parseInt(document.getElementById('points_early_9_plus')?.value || 0),
+                    late_1_2: parseInt(document.getElementById('points_late_1_2')?.value || 75),
+                    late_3_5: parseInt(document.getElementById('points_late_3_5')?.value || 50),
+                    late_6_plus: parseInt(document.getElementById('points_late_6_plus')?.value || 0)
                 };
                 
                 console.log('Creating workbook...');
@@ -1568,13 +1624,15 @@
                 ['Too Early Lines', tooEarlyLines],
                 [''],
                 ['WEIGHTED SCORE BREAKDOWN'],
-                ['Days Late', 'Points', 'Count'],
-                ['On-Time (≤0 days)', scoreWeightsExport.onTime, filteredData.filter(r => r.daysLate <= 0).length],
-                ['1-3 days late', scoreWeightsExport.late_1_3, filteredData.filter(r => r.daysLate >= 1 && r.daysLate <= 3).length],
-                ['4-5 days late', scoreWeightsExport.late_4_5, filteredData.filter(r => r.daysLate >= 4 && r.daysLate <= 5).length],
-                ['6-7 days late', scoreWeightsExport.late_6_7, filteredData.filter(r => r.daysLate >= 6 && r.daysLate <= 7).length],
-                ['8-14 days late', scoreWeightsExport.late_8_14, filteredData.filter(r => r.daysLate >= 8 && r.daysLate <= 14).length],
-                ['15+ days late', scoreWeightsExport.late_15_plus, filteredData.filter(r => r.daysLate >= 15).length],
+                ['Category', 'Points', 'Count'],
+                ['On-Time (0 days)', scoreWeightsExport.onTime, filteredData.filter(r => r.daysLate === 0).length],
+                ['1-2 days early', scoreWeightsExport.early_1_2, filteredData.filter(r => r.daysLate >= -2 && r.daysLate < 0).length],
+                ['3-5 days early', scoreWeightsExport.early_3_5, filteredData.filter(r => r.daysLate >= -5 && r.daysLate <= -3).length],
+                ['6-8 days early', scoreWeightsExport.early_6_8, filteredData.filter(r => r.daysLate >= -8 && r.daysLate <= -6).length],
+                ['9+ days early', scoreWeightsExport.early_9_plus, filteredData.filter(r => r.daysLate <= -9).length],
+                ['1-2 days late', scoreWeightsExport.late_1_2, filteredData.filter(r => r.daysLate >= 1 && r.daysLate <= 2).length],
+                ['3-5 days late', scoreWeightsExport.late_3_5, filteredData.filter(r => r.daysLate >= 3 && r.daysLate <= 5).length],
+                ['6+ days late', scoreWeightsExport.late_6_plus, filteredData.filter(r => r.daysLate >= 6).length],
                 [''],
                 ['TOLERANCE SETTINGS'],
                 ['Late Tolerance (Days)', lateTolerance],
@@ -1629,12 +1687,20 @@
                     // Calculate score
                     const daysLate = row.daysLate;
                     let lineScore;
-                    if (daysLate <= 0) lineScore = scoreWeightsExport.onTime;
-                    else if (daysLate <= 3) lineScore = scoreWeightsExport.late_1_3;
-                    else if (daysLate <= 5) lineScore = scoreWeightsExport.late_4_5;
-                    else if (daysLate <= 7) lineScore = scoreWeightsExport.late_6_7;
-                    else if (daysLate <= 14) lineScore = scoreWeightsExport.late_8_14;
-                    else lineScore = scoreWeightsExport.late_15_plus;
+                    
+                    if (daysLate === 0) {
+                        lineScore = scoreWeightsExport.onTime;
+                    } else if (daysLate < 0) {
+                        const daysEarly = Math.abs(daysLate);
+                        if (daysEarly <= 2) lineScore = scoreWeightsExport.early_1_2;
+                        else if (daysEarly <= 5) lineScore = scoreWeightsExport.early_3_5;
+                        else if (daysEarly <= 8) lineScore = scoreWeightsExport.early_6_8;
+                        else lineScore = scoreWeightsExport.early_9_plus;
+                    } else {
+                        if (daysLate <= 2) lineScore = scoreWeightsExport.late_1_2;
+                        else if (daysLate <= 5) lineScore = scoreWeightsExport.late_3_5;
+                        else lineScore = scoreWeightsExport.late_6_plus;
+                    }
                     
                     monthlyStatsExport[monthKey].totalPoints += lineScore;
                 }
@@ -1800,18 +1866,28 @@
                 // Calculate line score
                 const daysLate = row.daysLate;
                 let lineScore;
-                if (daysLate <= 0) {
+                
+                if (daysLate === 0) {
                     lineScore = scoreWeightsExport.onTime;
-                } else if (daysLate <= 3) {
-                    lineScore = scoreWeightsExport.late_1_3;
-                } else if (daysLate <= 5) {
-                    lineScore = scoreWeightsExport.late_4_5;
-                } else if (daysLate <= 7) {
-                    lineScore = scoreWeightsExport.late_6_7;
-                } else if (daysLate <= 14) {
-                    lineScore = scoreWeightsExport.late_8_14;
+                } else if (daysLate < 0) {
+                    const daysEarly = Math.abs(daysLate);
+                    if (daysEarly <= 2) {
+                        lineScore = scoreWeightsExport.early_1_2;
+                    } else if (daysEarly <= 5) {
+                        lineScore = scoreWeightsExport.early_3_5;
+                    } else if (daysEarly <= 8) {
+                        lineScore = scoreWeightsExport.early_6_8;
+                    } else {
+                        lineScore = scoreWeightsExport.early_9_plus;
+                    }
                 } else {
-                    lineScore = scoreWeightsExport.late_15_plus;
+                    if (daysLate <= 2) {
+                        lineScore = scoreWeightsExport.late_1_2;
+                    } else if (daysLate <= 5) {
+                        lineScore = scoreWeightsExport.late_3_5;
+                    } else {
+                        lineScore = scoreWeightsExport.late_6_plus;
+                    }
                 }
                 
                 detailData.push([
