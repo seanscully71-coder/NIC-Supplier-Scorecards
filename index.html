@@ -711,17 +711,22 @@
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
+            
+            console.log('File selected:', file.name);
 
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
+                    console.log('File loaded, parsing...');
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                     const jsonData = XLSX.utils.sheet_to_json(firstSheet);
                     
+                    console.log('Parsed rows:', jsonData.length);
                     processData(jsonData);
                 } catch (error) {
+                    console.error('Error in handleFileUpload:', error);
                     alert('Error reading file: ' + error.message);
                 }
             };
@@ -729,48 +734,53 @@
         }
 
         function processData(rawData) {
-            allData = rawData.map(row => {
-                const dueDate = parseExcelDate(row['Due Date']);
-                const receiptDate = parseExcelDate(row['Last Rcvd']);
-                
-                let daysLate = 0;
-                let isLate = false;
-                let isTooEarly = false;
-                
-                if (dueDate && receiptDate) {
-                    const diffTime = receiptDate - dueDate;
-                    daysLate = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            try {
+                allData = rawData.map(row => {
+                    const dueDate = parseExcelDate(row['Due Date']);
+                    const receiptDate = parseExcelDate(row['Last Rcvd']);
                     
-                    // Apply tolerance: only late if beyond tolerance
-                    isLate = daysLate > lateTolerance;
+                    let daysLate = 0;
+                    let isLate = false;
+                    let isTooEarly = false;
                     
-                    // Check if too early (negative days means early)
-                    isTooEarly = daysLate < -earlyTolerance;
-                }
-                
-                return {
-                    supplier: row['Vendor Name'],
-                    po: row['PO'],
-                    line: row['Line'],
-                    item: row['Item'],
-                    description: row['Item Description'],
-                    dueDate: dueDate,
-                    receiptDate: receiptDate,
-                    daysLate: daysLate,
-                    isLate: isLate,
-                    isTooEarly: isTooEarly,
-                    status: row['Line Status'],
-                    received: row['Received']
-                };
-            }).filter(row => row.receiptDate && row.dueDate);
+                    if (dueDate && receiptDate) {
+                        const diffTime = receiptDate - dueDate;
+                        daysLate = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        // Apply tolerance: only late if beyond tolerance
+                        isLate = daysLate > lateTolerance;
+                        
+                        // Check if too early (negative days means early)
+                        isTooEarly = daysLate < -earlyTolerance;
+                    }
+                    
+                    return {
+                        supplier: row['Vendor Name'],
+                        po: row['PO'],
+                        line: row['Line'],
+                        item: row['Item'],
+                        description: row['Item Description'],
+                        dueDate: dueDate,
+                        receiptDate: receiptDate,
+                        daysLate: daysLate,
+                        isLate: isLate,
+                        isTooEarly: isTooEarly,
+                        status: row['Line Status'],
+                        received: row['Received']
+                    };
+                }).filter(row => row.receiptDate && row.dueDate);
 
-            filteredData = [...allData];
-            
-            populateFilters();
-            updateDashboard();
-            
-            document.getElementById('uploadSection').style.display = 'none';
-            document.getElementById('dashboard').classList.add('active');
+                filteredData = [...allData];
+                
+                populateFilters();
+                updateDashboard();
+                
+                document.getElementById('uploadSection').style.display = 'none';
+                document.getElementById('dashboard').classList.add('active');
+            } catch (error) {
+                console.error('Error processing data:', error);
+                alert('Error processing file: ' + error.message + '. Please check that the file has the required columns (Vendor Name, PO, Line, Item, Due Date, Last Rcvd).');
+            }
         }
 
         function parseExcelDate(value) {
@@ -1724,16 +1734,6 @@
                 [''],
                 ['Supplier', 'PO Number', 'Line', 'Item', 'Description', 'Due Date', 'Receipt Date', 'Days Late/Early', 'Score', 'Status']
             ];
-            
-            // Get scoring weights
-            const scoreWeightsExport = {
-                onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
-                late_1_3: parseInt(document.getElementById('points_1_3')?.value || 85),
-                late_4_5: parseInt(document.getElementById('points_4_5')?.value || 70),
-                late_6_7: parseInt(document.getElementById('points_6_7')?.value || 55),
-                late_8_14: parseInt(document.getElementById('points_8_14')?.value || 40),
-                late_15_plus: parseInt(document.getElementById('points_15_plus')?.value || 0)
-            };
             
             filteredData.forEach(row => {
                 let status;
