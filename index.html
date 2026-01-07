@@ -1472,28 +1472,31 @@
             window.URL.revokeObjectURL(url);
         }
         function exportToExcel() {
-            const totalLines = filteredData.length;
-            const lateLines = filteredData.filter(row => row.isLate).length;
-            const onTimeLines = totalLines - lateLines;
-            const tooEarlyLines = filteredData.filter(row => row.isTooEarly).length;
-            const otdRate = totalLines > 0 ? ((onTimeLines / totalLines) * 100).toFixed(2) : 0;
-            const weightedScore = calculateWeightedScore();
-            
-            const supplierName = document.getElementById('supplierFilter').value;
-            const displaySupplier = supplierName !== 'all' ? supplierName : 'All Suppliers';
-            
-            // Get scoring weights for export
-            const scoreWeightsExport = {
-                onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
-                late_1_3: parseInt(document.getElementById('points_1_3')?.value || 85),
-                late_4_5: parseInt(document.getElementById('points_4_5')?.value || 70),
-                late_6_7: parseInt(document.getElementById('points_6_7')?.value || 55),
-                late_8_14: parseInt(document.getElementById('points_8_14')?.value || 40),
-                late_15_plus: parseInt(document.getElementById('points_15_plus')?.value || 0)
-            };
-            
-            // Create a new workbook
-            const wb = XLSX.utils.book_new();
+            try {
+                console.log('Starting Excel export...');
+                const totalLines = filteredData.length;
+                const lateLines = filteredData.filter(row => row.isLate).length;
+                const onTimeLines = totalLines - lateLines;
+                const tooEarlyLines = filteredData.filter(row => row.isTooEarly).length;
+                const otdRate = totalLines > 0 ? ((onTimeLines / totalLines) * 100).toFixed(2) : 0;
+                const weightedScore = calculateWeightedScore();
+                
+                const supplierName = document.getElementById('supplierFilter').value;
+                const displaySupplier = supplierName !== 'all' ? supplierName : 'All Suppliers';
+                
+                // Get scoring weights for export
+                const scoreWeightsExport = {
+                    onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
+                    late_1_3: parseInt(document.getElementById('points_1_3')?.value || 85),
+                    late_4_5: parseInt(document.getElementById('points_4_5')?.value || 70),
+                    late_6_7: parseInt(document.getElementById('points_6_7')?.value || 55),
+                    late_8_14: parseInt(document.getElementById('points_8_14')?.value || 40),
+                    late_15_plus: parseInt(document.getElementById('points_15_plus')?.value || 0)
+                };
+                
+                console.log('Creating workbook...');
+                // Create a new workbook
+                const wb = XLSX.utils.book_new();
             
             // ===== SHEET 1: Summary =====
             const summaryData = [
@@ -1654,7 +1657,7 @@
             });
             
             const ws3 = XLSX.utils.aoa_to_sheet(monthlySheetData);
-            ws4_repeat['!cols'] = [
+            ws3['!cols'] = [
                 { wch: 15 },
                 { wch: 12 },
                 { wch: 12 }
@@ -1835,8 +1838,14 @@
             // Generate filename
             const filename = `Supplier_Scorecard_${displaySupplier.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
             
+            console.log('Writing file:', filename);
             // Write the file
             XLSX.writeFile(wb, filename);
+            console.log('Excel export complete!');
+            } catch (error) {
+                console.error('Error in exportToExcel:', error);
+                alert('Error exporting to Excel: ' + error.message);
+            }
         }
     </script>
 </body>
