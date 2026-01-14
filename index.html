@@ -828,19 +828,20 @@
                     }
                     
                     return {
-                        supplier: row['Vendor Name'],
-                        po: row['PO'],
-                        line: row['Line'],
-                        item: row['Item'],
-                        description: row['Item Description'],
-                        promiseDate: promiseDate,
-                        receiptDate: receiptDate,
-                        daysLate: daysLate,
-                        isLate: isLate,
-                        isTooEarly: isTooEarly,
-                        status: row['Line Status'],
-                        received: row['Received']
-                    };
+    supplier: row['Vendor Name'],
+    vendorCode: row['Vendor'],  // NEW: Capture Vendor Code from Column T
+    po: row['PO'],
+    line: row['Line'],
+    item: row['Item'],
+    description: row['Item Description'],
+    promiseDate: promiseDate,
+    receiptDate: receiptDate,
+    daysLate: daysLate,
+    isLate: isLate,
+    isTooEarly: isTooEarly,
+    status: row['Line Status'],
+    received: row['Received']
+};
                 }).filter(row => row.receiptDate && row.promiseDate);
 
                 filteredData = [...allData];
@@ -891,19 +892,20 @@
                 mrrData = rawData
                     .filter(row => row['Ref Type'] === 'P')
                     .map(row => ({
-                        mrrNum: row['MRR Num'],
-                        qtyOnMRR: row['Qty On MRR'] || 0,
-                        qtyRejected: row['Qty Rejected'] || 0,
-                        qtyAccepted: row['Qty Accepted'] || 0,
-                        closeDate: parseExcelDate(row['Close Date']),
-                        createDate: parseExcelDate(row['Create Date']),
-                        item: row['Item'],
-                        supplier: row['Name'],  // Column U - Supplier name
-                        poNumber: row['Job/PS/PO/CO'],
-                        description: row['Description'],
-                        problemDesc: row['Problem Description'],
-                        code: row['Code']
-                    }))
+    mrrNum: row['MRR Num'],
+    qtyOnMRR: row['Qty On MRR'] || 0,
+    qtyRejected: row['Qty Rejected'] || 0,
+    qtyAccepted: row['Qty Accepted'] || 0,
+    closeDate: parseExcelDate(row['Close Date']),
+    createDate: parseExcelDate(row['Create Date']),
+    item: row['Item'],
+    supplier: row['Name'],  // Column U - Supplier name
+    entity: row['Entity'],  // NEW: Column S - Entity/Vendor Code
+    poNumber: row['Job/PS/PO/CO'],
+    description: row['Description'],
+    problemDesc: row['Problem Description'],
+    code: row['Code']
+}))
                     .filter(row => row.supplier);  // Only keep records with supplier name
                 
                 mrrDataLoaded = true;
@@ -964,45 +966,45 @@ function calculateDPPM(supplier = null) {
         return sum + received;
     }, 0);
     
-    // Calculate total rejected from MRR data
+    // Get vendor codes from the PO data for this supplier
+    const vendorCodes = [...new Set(poDataToUse.map(row => row.vendorCode).filter(v => v))];
+    
+    console.log('=== dPPM CALCULATION (VENDOR CODE MATCHING) ===');
+    console.log('Target Supplier:', targetSupplier);
+    console.log('Vendor Codes from PO:', vendorCodes);
+    console.log('Total Received Qty:', totalReceived);
+    
+    // Filter MRR data by vendor code (Entity field)
     let mrrDataToUse = mrrData;
     
-    // Filter MRR by supplier if needed
-if (targetSupplier !== 'all') {
-    console.log('=== SUPPLIER MATCHING DEBUG ===');
-    console.log('Target Supplier from PO:', targetSupplier);
-    console.log('Available MRR Suppliers:', [...new Set(mrrData.map(r => r.supplier))]);
-    
-    mrrDataToUse = mrrData.filter(row => {
-        // Try to match supplier names (case-insensitive, trim whitespace)
-        const mrrSupplier = (row.supplier || '').trim().toUpperCase();
-        const targetUpper = targetSupplier.trim().toUpperCase();
-        const match = mrrSupplier === targetUpper || mrrSupplier.includes(targetUpper) || targetUpper.includes(mrrSupplier);
-        
-        if (match) {
-            console.log('✓ MATCH FOUND:', {
-                mrrSupplier: row.supplier,
-                targetSupplier: targetSupplier,
-                rejected: row.qtyRejected
-            });
-        }
-        
-        return match;
-    });
-    
-    console.log('Matched MRR Records:', mrrDataToUse.length);
-    console.log('Total Rejected in Matched Records:', mrrDataToUse.reduce((sum, r) => sum + (parseFloat(r.qtyRejected) || 0), 0));
-    console.log('=== END DEBUG ===');
-}
+    if (targetSupplier !== 'all' && vendorCodes.length > 0) {
+        mrrDataToUse = mrrData.filter(row => {
+            const mrrEntity = row.entity ? row.entity.trim() : '';
+            const match = vendorCodes.includes(mrrEntity);
+            
+            if (match) {
+                console.log('✓ MRR Match:', {
+                    entity: mrrEntity,
+                    supplier: row.supplier,
+                    rejected: row.qtyRejected,
+                    closeDate: row.closeDate
+                });
+            }
+            
+            return match;
+        });
+    }
     
     // Apply date filter to MRR data (using Close Date)
     if (startDate || endDate) {
+        const beforeFilter = mrrDataToUse.length;
         mrrDataToUse = mrrDataToUse.filter(row => {
             if (!row.closeDate) return false;
             if (startDate && row.closeDate < startDate) return false;
             if (endDate && row.closeDate > endDate) return false;
             return true;
         });
+        console.log('MRR records after date filter:', mrrDataToUse.length, '(was', beforeFilter + ')');
     }
     
     const totalRejected = mrrDataToUse.reduce((sum, row) => {
@@ -1010,19 +1012,17 @@ if (targetSupplier !== 'all') {
         return sum + rejected;
     }, 0);
     
-    console.log('dPPM Calculation:', {
-        supplier: targetSupplier,
-        totalReceived,
-        totalRejected,
-        mrrRecords: mrrDataToUse.length,
-        poRecords: poDataToUse.length
-    });
+    console.log('Matched MRR Records:', mrrDataToUse.length);
+    console.log('Total Rejected Qty:', totalRejected);
     
     // Calculate dPPM
     let dppm = null;
     if (totalReceived > 0) {
         dppm = (totalRejected / totalReceived) * 1000000;
+        console.log('Calculated dPPM:', dppm.toFixed(2));
     }
+    
+    console.log('=== END dPPM CALCULATION ===');
     
     return {
         dppm,
