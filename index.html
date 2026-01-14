@@ -923,6 +923,97 @@
                 document.getElementById('mrrStatus').style.color = 'var(--danger)';
             }
         }
+function calculateDPPM(supplier = null) {
+    if (!mrrDataLoaded || !mrrData || mrrData.length === 0) {
+        return {
+            dppm: null,
+            totalReceived: 0,
+            totalRejected: 0,
+            hasMRRData: false
+        };
+    }
+    
+    // Get current filters
+    const startDateStr = document.getElementById('startDateFilter').value;
+    const endDateStr = document.getElementById('endDateFilter').value;
+    const startDate = startDateStr ? new Date(startDateStr) : null;
+    const endDate = endDateStr ? new Date(endDateStr) : null;
+    if (endDate) {
+        endDate.setHours(23, 59, 59, 999);
+    }
+    
+    // Determine which supplier to calculate for
+    const targetSupplier = supplier || document.getElementById('supplierFilter').value;
+    
+    // Calculate total received quantity from PO data
+    let poDataToUse = targetSupplier === 'all' ? filteredData : 
+                      filteredData.filter(row => row.supplier === targetSupplier);
+    
+    // Apply date filter to PO data
+    if (startDate || endDate) {
+        poDataToUse = poDataToUse.filter(row => {
+            if (!row.receiptDate) return false;
+            if (startDate && row.receiptDate < startDate) return false;
+            if (endDate && row.receiptDate > endDate) return false;
+            return true;
+        });
+    }
+    
+    const totalReceived = poDataToUse.reduce((sum, row) => {
+        const received = parseFloat(row.received) || 0;
+        return sum + received;
+    }, 0);
+    
+    // Calculate total rejected from MRR data
+    let mrrDataToUse = mrrData;
+    
+    // Filter MRR by supplier if needed
+    if (targetSupplier !== 'all') {
+        mrrDataToUse = mrrData.filter(row => {
+            // Try to match supplier names (case-insensitive, trim whitespace)
+            const mrrSupplier = (row.supplier || '').trim().toUpperCase();
+            const targetUpper = targetSupplier.trim().toUpperCase();
+            return mrrSupplier === targetUpper || mrrSupplier.includes(targetUpper);
+        });
+    }
+    
+    // Apply date filter to MRR data (using Close Date)
+    if (startDate || endDate) {
+        mrrDataToUse = mrrDataToUse.filter(row => {
+            if (!row.closeDate) return false;
+            if (startDate && row.closeDate < startDate) return false;
+            if (endDate && row.closeDate > endDate) return false;
+            return true;
+        });
+    }
+    
+    const totalRejected = mrrDataToUse.reduce((sum, row) => {
+        const rejected = parseFloat(row.qtyRejected) || 0;
+        return sum + rejected;
+    }, 0);
+    
+    console.log('dPPM Calculation:', {
+        supplier: targetSupplier,
+        totalReceived,
+        totalRejected,
+        mrrRecords: mrrDataToUse.length,
+        poRecords: poDataToUse.length
+    });
+    
+    // Calculate dPPM
+    let dppm = null;
+    if (totalReceived > 0) {
+        dppm = (totalRejected / totalReceived) * 1000000;
+    }
+    
+    return {
+        dppm,
+        totalReceived,
+        totalRejected,
+        hasMRRData: true,
+        mrrRecordCount: mrrDataToUse.length
+    };
+}
 
         function parseExcelDate(value) {
             if (!value) return null;
@@ -1049,6 +1140,50 @@
             
             document.getElementById('weightedScore').textContent = weightedScore.toFixed(2);
             document.getElementById('scoreProgress').style.width = weightedScore + '%';
+
+// Calculate and display dPPM
+const dppmData = calculateDPPM();
+const dppmValueElement = document.getElementById('dppmValue');
+const dppmSubtitleElement = document.getElementById('dppmSubtitle');
+const dppmProgressBar = document.getElementById('dppmProgressBar');
+const dppmProgress = document.getElementById('dppmProgress');
+
+if (dppmData.hasMRRData && dppmData.dppm !== null) {
+    dppmValueElement.textContent = dppmData.dppm.toFixed(0);
+    dppmSubtitleElement.textContent = `${dppmData.totalRejected} rejected / ${dppmData.totalReceived.toLocaleString()} received`;
+    
+    // Color code based on dPPM thresholds
+    // Excellent: < 500, Good: 500-2000, Fair: 2000-5000, Poor: > 5000
+    if (dppmData.dppm < 500) {
+        dppmValueElement.className = 'metric-value success';
+        dppmProgress.style.background = 'var(--success)';
+    } else if (dppmData.dppm < 2000) {
+        dppmValueElement.className = 'metric-value accent';
+        dppmProgress.style.background = 'var(--accent)';
+    } else if (dppmData.dppm < 5000) {
+        dppmValueElement.className = 'metric-value warning';
+        dppmProgress.style.background = 'var(--warning)';
+    } else {
+        dppmValueElement.className = 'metric-value danger';
+        dppmProgress.style.background = 'var(--danger)';
+    }
+    
+    // Show progress bar (inverse - lower is better)
+    dppmProgressBar.style.display = 'block';
+    const maxDPPM = 10000; // Cap for progress bar
+    const progressPercent = Math.min((dppmData.dppm / maxDPPM) * 100, 100);
+    dppmProgress.style.width = progressPercent + '%';
+} else if (dppmData.hasMRRData) {
+    dppmValueElement.textContent = '0';
+    dppmValueElement.className = 'metric-value success';
+    dppmSubtitleElement.textContent = 'No defects recorded';
+    dppmProgressBar.style.display = 'none';
+} else {
+    dppmValueElement.textContent = 'N/A';
+    dppmValueElement.className = 'metric-value warning';
+    dppmSubtitleElement.textContent = 'Upload MRR data';
+    dppmProgressBar.style.display = 'none';
+}
             
             const alertDiv = document.getElementById('performanceAlert');
             const score = calculateWeightedScore();
@@ -1459,6 +1594,51 @@
                     monthlyStats[monthKey].totalPoints += lineScore;
                 }
             });
+// Calculate dPPM for each month
+if (mrrDataLoaded && mrrData.length > 0) {
+    // Group MRR data by month
+    const mrrMonthlyStats = {};
+    
+    mrrData.forEach(row => {
+        if (row.closeDate) {
+            const monthKey = `${row.closeDate.getFullYear()}-${String(row.closeDate.getMonth() + 1).padStart(2, '0')}`;
+            
+            if (!mrrMonthlyStats[monthKey]) {
+                mrrMonthlyStats[monthKey] = { totalRejected: 0 };
+            }
+            
+            const rejected = parseFloat(row.qtyRejected) || 0;
+            mrrMonthlyStats[monthKey].totalRejected += rejected;
+        }
+    });
+    
+    // Calculate monthly received quantities and dPPM
+    Object.keys(monthlyStats).forEach(monthKey => {
+        const stats = monthlyStats[monthKey];
+        
+        // Get all PO data for this month
+        const monthData = filteredData.filter(row => {
+            if (!row.receiptDate) return false;
+            const rowMonthKey = `${row.receiptDate.getFullYear()}-${String(row.receiptDate.getMonth() + 1).padStart(2, '0')}`;
+            return rowMonthKey === monthKey;
+        });
+        
+        // Calculate total received for this month
+        stats.totalReceived = monthData.reduce((sum, row) => {
+            return sum + (parseFloat(row.received) || 0);
+        }, 0);
+        
+        // Get rejected for this month
+        stats.totalRejected = mrrMonthlyStats[monthKey] ? mrrMonthlyStats[monthKey].totalRejected : 0;
+        
+        // Calculate dPPM
+        if (stats.totalReceived > 0) {
+            stats.dppm = (stats.totalRejected / stats.totalReceived) * 1000000;
+        } else {
+            stats.dppm = null;
+        }
+    });
+}
             
             // Sort by date and create table rows
             const sortedMonths = Object.entries(monthlyStats)
@@ -1491,14 +1671,31 @@
                     scoreColor = 'var(--danger)';
                 }
                 
-                tr.innerHTML = `
-                    <td style="font-weight: 600;">${monthLabel}</td>
-                    <td>${stats.total}</td>
-                    <td style="color: var(--success)">${stats.onTime}</td>
-                    <td style="color: var(--danger)">${stats.late}</td>
-                    <td style="color: ${otdColor}; font-weight: 600;">${otdRate}%</td>
-                    <td style="color: ${scoreColor}; font-weight: 600;">${weightedScore}</td>
-                `;
+                // Color coding for dPPM
+let dppmColor = 'var(--text-secondary)';
+let dppmDisplay = 'N/A';
+if (stats.dppm !== null && stats.dppm !== undefined) {
+    dppmDisplay = stats.dppm.toFixed(0);
+    if (stats.dppm < 500) {
+        dppmColor = 'var(--success)';
+    } else if (stats.dppm < 2000) {
+        dppmColor = 'var(--accent)';
+    } else if (stats.dppm < 5000) {
+        dppmColor = 'var(--warning)';
+    } else {
+        dppmColor = 'var(--danger)';
+    }
+}
+
+tr.innerHTML = `
+    <td style="font-weight: 600;">${monthLabel}</td>
+    <td>${stats.total}</td>
+    <td style="color: var(--success)">${stats.onTime}</td>
+    <td style="color: var(--danger)">${stats.late}</td>
+    <td style="color: ${otdColor}; font-weight: 600;">${otdRate}%</td>
+    <td style="color: ${scoreColor}; font-weight: 600;">${weightedScore}</td>
+    <td style="color: ${dppmColor}; font-weight: 600;">${dppmDisplay}</td>
+`;
                 
                 tbody.appendChild(tr);
             });
