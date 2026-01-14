@@ -1700,7 +1700,6 @@ if (mrrDataLoaded && mrrData.length > 0) {
     
     console.log('=== END MONTHLY dPPM ===');
 }
-
             
             // Sort by date and create table rows
             const sortedMonths = Object.entries(monthlyStats)
@@ -1774,13 +1773,14 @@ tr.innerHTML = `
                 tr.style.borderTop = '2px solid var(--accent)';
                 tr.style.fontWeight = '600';
                 tr.innerHTML = `
-                    <td style="color: var(--accent);">OVERALL</td>
-                    <td>${totalLines}</td>
-                    <td style="color: var(--success)">${totalOnTime}</td>
-                    <td style="color: var(--danger)">${totalLate}</td>
-                    <td style="color: var(--accent)">${overallOTD}%</td>
-                    <td style="color: var(--accent)">${overallScore}</td>
-                `;
+    <td style="color: var(--accent);">OVERALL</td>
+    <td>${totalLines}</td>
+    <td style="color: var(--success)">${totalOnTime}</td>
+    <td style="color: var(--danger)">${totalLate}</td>
+    <td style="color: var(--accent)">${overallOTD}%</td>
+    <td style="color: var(--accent)">${overallScore}</td>
+    <td>-</td>
+`;
                 tbody.appendChild(tr);
             }
         }
