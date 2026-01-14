@@ -1612,23 +1612,6 @@ if (dppmData.dppm < 2500) {
                     monthlyStats[monthKey].totalPoints += lineScore;
                 }
             });
-// Calculate dPPM for each month
-if (mrrDataLoaded && mrrData.length > 0) {
-    // Group MRR data by month
-    const mrrMonthlyStats = {};
-    
-    mrrData.forEach(row => {
-        if (row.closeDate) {
-            const monthKey = `${row.closeDate.getFullYear()}-${String(row.closeDate.getMonth() + 1).padStart(2, '0')}`;
-            
-            if (!mrrMonthlyStats[monthKey]) {
-                mrrMonthlyStats[monthKey] = { totalRejected: 0 };
-            }
-            
-            const rejected = parseFloat(row.qtyRejected) || 0;
-            mrrMonthlyStats[monthKey].totalRejected += rejected;
-        }
-    });
     
 // Calculate dPPM for each month
 if (mrrDataLoaded && mrrData.length > 0) {
