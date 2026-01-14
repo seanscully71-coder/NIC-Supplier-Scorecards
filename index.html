@@ -1,3 +1,1635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supplier Scorecard | OTD Performance Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root {
+            --primary: #0A2540;
+            --accent: #00D9B8;
+            --warning: #FF6B35;
+            --success: #4CAF50;
+            --danger: #E63946;
+            --bg-dark: #0D1117;
+            --bg-card: #161B22;
+            --text-primary: #E6EDF3;
+            --text-secondary: #8B949E;
+            --border: #30363D;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Work Sans', sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1f2e 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            margin-bottom: 3rem;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent) 0%, #00A3E0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-family: 'DM Mono', monospace;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .upload-section {
+            background: var(--bg-card);
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            padding: 3rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.6s ease-out 0.2s both;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .upload-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 217, 184, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .upload-section:hover {
+            border-color: var(--accent);
+            background: rgba(0, 217, 184, 0.05);
+        }
+
+        .upload-section:hover::before {
+            left: 100%;
+        }
+
+        .file-input-wrapper {
+            display: inline-block;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-button {
+            background: linear-gradient(135deg, var(--accent) 0%, #00A3E0 100%);
+            color: var(--primary);
+            padding: 1rem 2.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            box-shadow: 0 4px 15px rgba(0, 217, 184, 0.3);
+        }
+
+        .upload-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 217, 184, 0.4);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+
+        .dashboard {
+            display: none;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .dashboard.active {
+            display: block;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px var(--shadow);
+            border-color: var(--accent);
+        }
+
+        .metric-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), transparent);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover::after {
+            transform: scaleX(1);
+        }
+
+        .metric-label {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value.success {
+            color: var(--success);
+        }
+
+        .metric-value.danger {
+            color: var(--danger);
+        }
+
+        .metric-value.accent {
+            color: var(--accent);
+        }
+
+        .metric-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .chart-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 968px) {
+            .chart-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-card {
+                grid-column: span 1 !important;
+            }
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .data-table {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        thead {
+            background: rgba(0, 217, 184, 0.1);
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--accent);
+            font-family: 'DM Mono', monospace;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid var(--border);
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: rgba(0, 217, 184, 0.05);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-badge.on-time {
+            background: rgba(76, 175, 80, 0.2);
+            color: var(--success);
+        }
+
+        .status-badge.late {
+            background: rgba(230, 57, 70, 0.2);
+            color: var(--danger);
+        }
+
+        .status-badge.too-early {
+            background: rgba(255, 107, 53, 0.2);
+            color: var(--warning);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #00A3E0);
+            border-radius: 4px;
+            transition: width 1s ease-out;
+            box-shadow: 0 0 10px rgba(0, 217, 184, 0.5);
+        }
+
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .alert.warning {
+            background: rgba(255, 107, 53, 0.1);
+            border: 1px solid var(--warning);
+        }
+
+        .alert.success {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid var(--success);
+        }
+
+        .alert-icon {
+            font-size: 1.5rem;
+        }
+
+        .supplier-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .supplier-name {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .export-button {
+            background: transparent;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-left: 1rem;
+        }
+
+        .export-button:hover {
+            background: var(--accent);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .filter-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-label {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+
+        select {
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        select:hover,
+        select:focus {
+            border-color: var(--accent);
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="subtitle">Performance Analytics</div>
+            <h1>Supplier Scorecard</h1>
+        </header>
+
+        <div class="upload-section" id="uploadSection">
+            <div class="upload-icon">📊</div>
+            <h2 style="margin-bottom: 1rem; color: var(--text-primary);">Upload Supplier Performance Data</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Upload PO data for OTD analysis and optionally MRR data for quality (dPPM) metrics</p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; max-width: 800px; margin: 0 auto;">
+                <div>
+                    <h3 style="color: var(--accent); margin-bottom: 1rem; font-size: 1rem;">1. Purchase Order Data (Required)</h3>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls" />
+                        <button class="upload-button" onclick="document.getElementById('fileInput').click()">
+                            📁 Select PO File
+                        </button>
+                    </div>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.85rem;">
+                        For On-Time Delivery (OTD) analysis
+                    </p>
+                </div>
+                
+                <div>
+                    <h3 style="color: var(--warning); margin-bottom: 1rem; font-size: 1rem;">2. Quality Data (Optional)</h3>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="mrrFileInput" class="file-input" accept=".xlsx,.xls" />
+                        <button class="upload-button" onclick="document.getElementById('mrrFileInput').click()" style="background: var(--warning); border-color: var(--warning);">
+                            🔍 Select MRR File
+                        </button>
+                    </div>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.85rem;">
+                        For dPPM (defect rate) analysis
+                    </p>
+                    <p id="mrrStatus" style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.75rem; font-style: italic;">
+                    </p>
+                </div>
+            </div>
+            
+            <p style="color: var(--text-secondary); margin-top: 2rem; font-size: 0.85rem;">
+                Supported formats: .xlsx, .xls
+            </p>
+        </div>
+
+        <div class="dashboard" id="dashboard">
+            <div class="supplier-header">
+                <h2 class="supplier-name" id="supplierName"></h2>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span class="subtitle" id="dateRange"></span>
+                    <button class="export-button" onclick="generatePDFReport()">📄 PDF Report</button>
+                    <button class="export-button" onclick="exportToExcel()">Export to Excel</button>
+                    <button class="export-button" onclick="exportReport()">Export CSV</button>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h3 class="chart-title" style="margin-bottom: 1rem;">Filters & Tolerance Settings</h3>
+                <div class="filter-grid">
+                    <div class="filter-group">
+                        <label class="filter-label">Supplier</label>
+                        <select id="supplierFilter" onchange="filterData()">
+                            <option value="all">All Suppliers</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Status</label>
+                        <select id="statusFilter" onchange="filterData()">
+                            <option value="all">All Status</option>
+                            <option value="Filled">Filled</option>
+                            <option value="Open">Open</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Start Date</label>
+                        <input type="date" id="startDateFilter" onchange="filterData()" 
+                               style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; font-size: 0.9rem; width: 100%;">
+                        <small style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+                            Filter by receipt date
+                        </small>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">End Date</label>
+                        <input type="date" id="endDateFilter" onchange="filterData()" 
+                               style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; font-size: 0.9rem; width: 100%;">
+                        <small style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+                            Leave blank for all dates
+                        </small>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Late Tolerance (Days)</label>
+                        <input type="number" id="lateTolerance" value="0" min="0" max="30" 
+                               onchange="updateTolerance()" 
+                               style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; font-size: 0.9rem; width: 100%;">
+                        <small style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+                            Grace period after promise date
+                        </small>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Early Tolerance (Days)</label>
+                        <input type="number" id="earlyTolerance" value="0" min="0" max="30" 
+                               onchange="updateTolerance()" 
+                               style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; font-size: 0.9rem; width: 100%;">
+                        <small style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+                            Warning if delivered too early
+                        </small>
+                    </div>
+                </div>
+                <div style="margin-top: 1.5rem;">
+                    <button onclick="toggleScoringSettings()" style="background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: all 0.3s ease;">
+                        ⚙️ Adjust Weighted Scoring
+                    </button>
+                    <button onclick="clearDateFilters()" style="background: transparent; border: 1px solid var(--warning); color: var(--warning); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: all 0.3s ease; margin-left: 0.5rem;">
+                        🗓️ Clear Date Filters
+                    </button>
+                </div>
+                <div id="scoringSettings" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(0, 217, 184, 0.05); border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--accent);">Weighted Score Points</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+                        <div style="grid-column: 1 / -1; font-weight: 600; color: var(--text-primary); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">On-Time Window</div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">On-Time (0 days)</label>
+                            <input type="number" id="points_ontime" value="100" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        
+                        <div style="grid-column: 1 / -1; font-weight: 600; color: var(--warning); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 0.5rem;">Early Deliveries</div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">1-2 days early</label>
+                            <input type="number" id="points_early_1_2" value="100" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">3-5 days early</label>
+                            <input type="number" id="points_early_3_5" value="75" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">6-8 days early</label>
+                            <input type="number" id="points_early_6_8" value="50" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">9+ days early</label>
+                            <input type="number" id="points_early_9_plus" value="0" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        
+                        <div style="grid-column: 1 / -1; font-weight: 600; color: var(--danger); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 0.5rem;">Late Deliveries</div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">1-2 days late</label>
+                            <input type="number" id="points_late_1_2" value="75" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">3-5 days late</label>
+                            <input type="number" id="points_late_3_5" value="50" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">6+ days late</label>
+                            <input type="number" id="points_late_6_plus" value="0" min="0" max="100" onchange="updateScoring()" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                    </div>
+                    <div style="margin-top: 0.75rem; font-size: 0.75rem; color: var(--text-secondary);">
+                        Official scoring system: On-time = 100, Early/Late deliveries scored by severity.
+                    </div>
+                </div>
+                <div style="margin-top: 1rem; padding: 1rem; background: rgba(0, 217, 184, 0.05); border-radius: 8px; border-left: 3px solid var(--accent);">
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                        <strong style="color: var(--accent);">Current Settings:</strong> 
+                        Deliveries up to <span id="lateToleranceDisplay" style="color: var(--accent); font-weight: 600;">0</span> days after promise date are considered on-time.
+                        <span id="earlyWarningDisplay"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="performanceAlert"></div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">On-Time Delivery Rate</div>
+                    <div class="metric-value accent" id="otdRate">0%</div>
+                    <div class="metric-subtitle">Target: 98.5%</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="otdProgress" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-label">Weighted Score</div>
+                    <div class="metric-value accent" id="weightedScore">0</div>
+                    <div class="metric-subtitle">Target: 98.5</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="scoreProgress" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+    <div class="metric-label">dPPM (Defective PPM)</div>
+    <div class="metric-value warning" id="dppmValue">N/A</div>
+    <div class="metric-subtitle" id="dppmSubtitle">Target: < 2,500</div>
+                    <div class="progress-bar" style="display: none;" id="dppmProgressBar">
+                        <div class="progress-fill" id="dppmProgress" style="width: 0%; background: var(--warning);"></div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-label">Total Lines Received</div>
+                    <div class="metric-value" id="totalLines">0</div>
+                    <div class="metric-subtitle">Completed deliveries</div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-label">On-Time Lines</div>
+                    <div class="metric-value success" id="onTimeLines">0</div>
+                    <div class="metric-subtitle">Delivered on or before due date</div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-label">Late Lines</div>
+                    <div class="metric-value danger" id="lateLines">0</div>
+                    <div class="metric-subtitle">Delivered after due date</div>
+                </div>
+            </div>
+
+            <div class="chart-section">
+                <div class="chart-card">
+                    <h3 class="chart-title">Performance Overview</h3>
+                    <canvas id="performanceChart"></canvas>
+                </div>
+
+                <div class="chart-card">
+                    <h3 class="chart-title">Monthly OTD Trend</h3>
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+
+                <div class="chart-card" style="grid-column: span 2;">
+                    <h3 class="chart-title">Top Suppliers by OTD</h3>
+                    <canvas id="supplierChart"></canvas>
+                </div>
+            </div>
+
+            <div class="data-table" style="margin-bottom: 2rem;">
+                <h3 class="chart-title" style="margin-bottom: 1.5rem;">Monthly Performance Summary</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Total Lines</th>
+                            <th>On-Time</th>
+                            <th>Late</th>
+                            <th>OTD %</th>
+                            <th>OTD Score</th>
+                            <th>dPPM</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monthlyTableBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="data-table">
+                <h3 class="chart-title" style="margin-bottom: 1.5rem;">Detailed Line Items</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Supplier</th>
+                            <th>PO Number</th>
+                            <th>Line</th>
+                            <th>Item</th>
+                            <th>Promise Date</th>
+                            <th>Receipt Date</th>
+                            <th>Days Late</th>
+                            <th>Score</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allData = [];
+        let filteredData = [];
+        let mrrData = [];  // Quality/defect data from MRR file
+        let mrrDataLoaded = false;
+        let charts = {};
+
+        const OTD_TARGET = 98.5;
+        let lateTolerance = 0;
+        let earlyTolerance = 0;
+
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+        document.getElementById('mrrFileInput').addEventListener('change', handleMRRFileUpload);
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            console.log('File selected:', file.name);
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    console.log('File loaded, parsing...');
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    console.log('Parsed rows:', jsonData.length);
+                    processData(jsonData);
+                } catch (error) {
+                    console.error('Error in handleFileUpload:', error);
+                    alert('Error reading file: ' + error.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processData(rawData) {
+            try {
+                allData = rawData.map(row => {
+                    const promiseDate = parseExcelDate(row['Promise Date']);
+                    const receiptDate = parseExcelDate(row['Last Rcvd']);
+                    
+                    let daysLate = 0;
+                    let isLate = false;
+                    let isTooEarly = false;
+                    
+                    if (promiseDate && receiptDate) {
+                        const diffTime = receiptDate - promiseDate;
+                        daysLate = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        // Apply tolerance: only late if beyond tolerance
+                        isLate = daysLate > lateTolerance;
+                        
+                        // Check if too early (negative days means early)
+                        isTooEarly = daysLate < -earlyTolerance;
+                    }
+                    
+                    return {
+    supplier: row['Vendor Name'],
+    vendorCode: row['Vendor'],  // NEW: Capture Vendor Code from Column T
+    po: row['PO'],
+    line: row['Line'],
+    item: row['Item'],
+    description: row['Item Description'],
+    promiseDate: promiseDate,
+    receiptDate: receiptDate,
+    daysLate: daysLate,
+    isLate: isLate,
+    isTooEarly: isTooEarly,
+    status: row['Line Status'],
+    received: row['Received']
+};
+                }).filter(row => row.receiptDate && row.promiseDate);
+
+                filteredData = [...allData];
+                
+                populateFilters();
+                updateDashboard();
+                
+                document.getElementById('uploadSection').style.display = 'none';
+                document.getElementById('dashboard').classList.add('active');
+            } catch (error) {
+                console.error('Error processing data:', error);
+                alert('Error processing file: ' + error.message + '. Please check that the file has the required columns (Vendor Name, PO, Line, Item, Promise Date, Last Rcvd).');
+            }
+        }
+
+        function handleMRRFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            console.log('MRR file selected:', file.name);
+            document.getElementById('mrrStatus').textContent = 'Processing...';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    console.log('MRR file loaded, parsing...');
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    console.log('Parsed MRR rows:', jsonData.length);
+                    processMRRData(jsonData);
+                } catch (error) {
+                    console.error('Error in handleMRRFileUpload:', error);
+                    alert('Error reading MRR file: ' + error.message);
+                    document.getElementById('mrrStatus').textContent = 'Error loading file';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processMRRData(rawData) {
+            try {
+                console.log('Processing MRR data...');
+                
+                // Filter for Ref Type = 'P' (supplier defects) and process
+                mrrData = rawData
+                    .filter(row => row['Ref Type'] === 'P')
+                    .map(row => ({
+    mrrNum: row['MRR Num'],
+    qtyOnMRR: row['Qty On MRR'] || 0,
+    qtyRejected: row['Qty Rejected'] || 0,
+    qtyAccepted: row['Qty Accepted'] || 0,
+    closeDate: parseExcelDate(row['Close Date']),
+    createDate: parseExcelDate(row['Create Date']),
+    item: row['Item'],
+    supplier: row['Name'],  // Column U - Supplier name
+    entity: row['Entity'],  // NEW: Column S - Entity/Vendor Code
+    poNumber: row['Job/PS/PO/CO'],
+    description: row['Description'],
+    problemDesc: row['Problem Description'],
+    code: row['Code']
+}))
+                    .filter(row => row.supplier);  // Only keep records with supplier name
+                
+                mrrDataLoaded = true;
+                console.log('MRR data processed:', mrrData.length, 'supplier defect records');
+                
+                document.getElementById('mrrStatus').textContent = `✓ ${mrrData.length} defect records loaded`;
+                document.getElementById('mrrStatus').style.color = 'var(--success)';
+                
+                // Recalculate dashboard to include dPPM
+                if (filteredData.length > 0) {
+                    updateDashboard();
+                }
+            } catch (error) {
+                console.error('Error processing MRR data:', error);
+                alert('Error processing MRR file: ' + error.message);
+                document.getElementById('mrrStatus').textContent = 'Error processing file';
+                document.getElementById('mrrStatus').style.color = 'var(--danger)';
+            }
+        }
+function calculateDPPM(supplier = null) {
+    if (!mrrDataLoaded || !mrrData || mrrData.length === 0) {
+        return {
+            dppm: null,
+            totalReceived: 0,
+            totalRejected: 0,
+            hasMRRData: false
+        };
+    }
+    
+    // Get current filters
+    const startDateStr = document.getElementById('startDateFilter').value;
+    const endDateStr = document.getElementById('endDateFilter').value;
+    const startDate = startDateStr ? new Date(startDateStr) : null;
+    const endDate = endDateStr ? new Date(endDateStr) : null;
+    if (endDate) {
+        endDate.setHours(23, 59, 59, 999);
+    }
+    
+    // Determine which supplier to calculate for
+    const targetSupplier = supplier || document.getElementById('supplierFilter').value;
+    
+    // Calculate total received quantity from PO data
+    let poDataToUse = targetSupplier === 'all' ? filteredData : 
+                      filteredData.filter(row => row.supplier === targetSupplier);
+    
+    // Apply date filter to PO data
+    if (startDate || endDate) {
+        poDataToUse = poDataToUse.filter(row => {
+            if (!row.receiptDate) return false;
+            if (startDate && row.receiptDate < startDate) return false;
+            if (endDate && row.receiptDate > endDate) return false;
+            return true;
+        });
+    }
+    
+    const totalReceived = poDataToUse.reduce((sum, row) => {
+        const received = parseFloat(row.received) || 0;
+        return sum + received;
+    }, 0);
+    
+    // Get vendor codes from the PO data for this supplier
+    const vendorCodes = [...new Set(poDataToUse.map(row => row.vendorCode).filter(v => v))];
+    
+    console.log('=== dPPM CALCULATION (VENDOR CODE MATCHING) ===');
+    console.log('Target Supplier:', targetSupplier);
+    console.log('Vendor Codes from PO:', vendorCodes);
+    console.log('Total Received Qty:', totalReceived);
+    
+    // Filter MRR data by vendor code (Entity field)
+    let mrrDataToUse = mrrData;
+    
+    if (targetSupplier !== 'all' && vendorCodes.length > 0) {
+        mrrDataToUse = mrrData.filter(row => {
+            const mrrEntity = row.entity ? row.entity.trim() : '';
+            const match = vendorCodes.includes(mrrEntity);
+            
+            if (match) {
+                console.log('✓ MRR Match:', {
+                    entity: mrrEntity,
+                    supplier: row.supplier,
+                    rejected: row.qtyRejected,
+                    closeDate: row.closeDate
+                });
+            }
+            
+            return match;
+        });
+    }
+    
+    // Apply date filter to MRR data (using Close Date)
+    if (startDate || endDate) {
+        const beforeFilter = mrrDataToUse.length;
+        mrrDataToUse = mrrDataToUse.filter(row => {
+            if (!row.closeDate) return false;
+            if (startDate && row.closeDate < startDate) return false;
+            if (endDate && row.closeDate > endDate) return false;
+            return true;
+        });
+        console.log('MRR records after date filter:', mrrDataToUse.length, '(was', beforeFilter + ')');
+    }
+    
+    const totalRejected = mrrDataToUse.reduce((sum, row) => {
+        const rejected = parseFloat(row.qtyRejected) || 0;
+        return sum + rejected;
+    }, 0);
+    
+    console.log('Matched MRR Records:', mrrDataToUse.length);
+    console.log('Total Rejected Qty:', totalRejected);
+    
+    // Calculate dPPM
+    let dppm = null;
+    if (totalReceived > 0) {
+        dppm = (totalRejected / totalReceived) * 1000000;
+        console.log('Calculated dPPM:', dppm.toFixed(2));
+    }
+    
+    console.log('=== END dPPM CALCULATION ===');
+    
+    return {
+        dppm,
+        totalReceived,
+        totalRejected,
+        hasMRRData: true,
+        mrrRecordCount: mrrDataToUse.length
+    };
+}
+
+        function parseExcelDate(value) {
+            if (!value) return null;
+            
+            if (value instanceof Date) {
+                return value;
+            }
+            
+            if (typeof value === 'number') {
+                const date = new Date((value - 25569) * 86400 * 1000);
+                return date;
+            }
+            
+            if (typeof value === 'string') {
+                const parsed = new Date(value);
+                if (!isNaN(parsed.getTime())) {
+                    return parsed;
+                }
+            }
+            
+            return null;
+        }
+
+        function populateFilters() {
+            const suppliers = [...new Set(allData.map(row => row.supplier))].sort();
+            const supplierFilter = document.getElementById('supplierFilter');
+            
+            supplierFilter.innerHTML = '<option value="all">All Suppliers</option>';
+            suppliers.forEach(supplier => {
+                const option = document.createElement('option');
+                option.value = supplier;
+                option.textContent = supplier;
+                supplierFilter.appendChild(option);
+            });
+        }
+
+        function filterData() {
+            const supplierFilter = document.getElementById('supplierFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const startDateStr = document.getElementById('startDateFilter').value;
+            const endDateStr = document.getElementById('endDateFilter').value;
+            
+            const startDate = startDateStr ? new Date(startDateStr) : null;
+            const endDate = endDateStr ? new Date(endDateStr) : null;
+            
+            // Set end date to end of day if specified
+            if (endDate) {
+                endDate.setHours(23, 59, 59, 999);
+            }
+            
+            filteredData = allData.filter(row => {
+                const matchSupplier = supplierFilter === 'all' || row.supplier === supplierFilter;
+                const matchStatus = statusFilter === 'all' || row.status === statusFilter;
+                
+                // Date filtering based on receipt date
+                let matchDate = true;
+                if (row.receiptDate) {
+                    if (startDate && row.receiptDate < startDate) {
+                        matchDate = false;
+                    }
+                    if (endDate && row.receiptDate > endDate) {
+                        matchDate = false;
+                    }
+                }
+                
+                return matchSupplier && matchStatus && matchDate;
+            });
+            
+            updateDashboard();
+        }
+
+        function clearDateFilters() {
+            document.getElementById('startDateFilter').value = '';
+            document.getElementById('endDateFilter').value = '';
+            filterData();
+        }
+
+        function updateTolerance() {
+            lateTolerance = parseInt(document.getElementById('lateTolerance').value) || 0;
+            earlyTolerance = parseInt(document.getElementById('earlyTolerance').value) || 0;
+            
+            // Update display text
+            document.getElementById('lateToleranceDisplay').textContent = lateTolerance;
+            
+            const earlyWarningDisplay = document.getElementById('earlyWarningDisplay');
+            if (earlyTolerance > 0) {
+                earlyWarningDisplay.textContent = ` Deliveries more than ${earlyTolerance} days early will be flagged.`;
+                earlyWarningDisplay.style.display = 'inline';
+            } else {
+                earlyWarningDisplay.style.display = 'none';
+            }
+            
+            // Recalculate all data with new tolerance
+            allData = allData.map(row => {
+                const daysLate = row.daysLate;
+                const isLate = daysLate > lateTolerance;
+                const isTooEarly = daysLate < -earlyTolerance;
+                
+                return {
+                    ...row,
+                    isLate: isLate,
+                    isTooEarly: isTooEarly
+                };
+            });
+            
+            // Reapply filters and update dashboard
+            filterData();
+        }
+
+        function updateDashboard() {
+            const totalLines = filteredData.length;
+            const lateLines = filteredData.filter(row => row.isLate).length;
+            const onTimeLines = totalLines - lateLines;
+            const otdRate = totalLines > 0 ? ((onTimeLines / totalLines) * 100).toFixed(2) : 0;
+            
+            // Calculate weighted score
+            const weightedScore = calculateWeightedScore();
+            
+            document.getElementById('totalLines').textContent = totalLines.toLocaleString();
+            document.getElementById('onTimeLines').textContent = onTimeLines.toLocaleString();
+            document.getElementById('lateLines').textContent = lateLines.toLocaleString();
+            document.getElementById('otdRate').textContent = otdRate + '%';
+            document.getElementById('otdProgress').style.width = Math.min(otdRate, 100) + '%';
+            
+            document.getElementById('weightedScore').textContent = weightedScore.toFixed(2);
+            document.getElementById('scoreProgress').style.width = weightedScore + '%';
+
+// Calculate and display dPPM
+const dppmData = calculateDPPM();
+const dppmValueElement = document.getElementById('dppmValue');
+const dppmSubtitleElement = document.getElementById('dppmSubtitle');
+const dppmProgressBar = document.getElementById('dppmProgressBar');
+const dppmProgress = document.getElementById('dppmProgress');
+
+if (dppmData.hasMRRData && dppmData.dppm !== null) {
+    dppmValueElement.textContent = dppmData.dppm.toFixed(0);
+    dppmSubtitleElement.textContent = `Target: < 2,500 | ${dppmData.totalRejected} rejected / ${dppmData.totalReceived.toLocaleString()} received`;
+    
+    // Color code based on dPPM thresholds
+// Excellent: < 2500, Good: 2500-5000, Fair: 5000-10000, Poor: > 10000
+if (dppmData.dppm < 2500) {
+    dppmValueElement.className = 'metric-value success';
+    dppmProgress.style.background = 'var(--success)';
+} else if (dppmData.dppm < 5000) {
+    dppmValueElement.className = 'metric-value accent';
+    dppmProgress.style.background = 'var(--accent)';
+} else if (dppmData.dppm < 10000) {
+    dppmValueElement.className = 'metric-value warning';
+    dppmProgress.style.background = 'var(--warning)';
+} else {
+    dppmValueElement.className = 'metric-value danger';
+    dppmProgress.style.background = 'var(--danger)';
+}
+    
+    // Show progress bar (inverse - lower is better)
+    dppmProgressBar.style.display = 'block';
+    const maxDPPM = 10000; // Cap for progress bar
+    const progressPercent = Math.min((dppmData.dppm / maxDPPM) * 100, 100);
+    dppmProgress.style.width = progressPercent + '%';
+} else if (dppmData.hasMRRData) {
+    dppmValueElement.textContent = '0';
+    dppmValueElement.className = 'metric-value success';
+    dppmSubtitleElement.textContent = 'No defects recorded';
+    dppmProgressBar.style.display = 'none';
+} else {
+    dppmValueElement.textContent = 'N/A';
+    dppmValueElement.className = 'metric-value warning';
+    dppmSubtitleElement.textContent = 'Upload MRR data';
+    dppmProgressBar.style.display = 'none';
+}
+            
+            const alertDiv = document.getElementById('performanceAlert');
+            const score = calculateWeightedScore();
+            if (score >= 98.5) {
+                alertDiv.innerHTML = `
+                    <div class="alert success">
+                        <div class="alert-icon">✓</div>
+                        <div>
+                            <strong>Excellent Performance!</strong> OTD Score of ${score.toFixed(2)} meets or exceeds the target of 98.5 (OTD Rate: ${otdRate}%)
+                        </div>
+                    </div>
+                `;
+            } else {
+                alertDiv.innerHTML = `
+                    <div class="alert warning">
+                        <div class="alert-icon">⚠</div>
+                        <div>
+                            <strong>Below Target:</strong> OTD Score of ${score.toFixed(2)} is ${(98.5 - score).toFixed(2)} points below the target of 98.5 (OTD Rate: ${otdRate}%)
+                        </div>
+                    </div>
+                `;
+            }
+            
+            const supplierFilter = document.getElementById('supplierFilter').value;
+            if (supplierFilter !== 'all') {
+                document.getElementById('supplierName').textContent = supplierFilter;
+            } else {
+                document.getElementById('supplierName').textContent = 'All Suppliers';
+            }
+            
+            if (filteredData.length > 0) {
+                const dates = filteredData.map(row => row.promiseDate).filter(d => d);
+                const minDate = new Date(Math.min(...dates));
+                const maxDate = new Date(Math.max(...dates));
+                document.getElementById('dateRange').textContent = 
+                    `${minDate.toLocaleDateString()} - ${maxDate.toLocaleDateString()}`;
+            }
+            
+            updateCharts();
+            updateMonthlyTable();
+            updateTable();
+        }
+
+        function calculateWeightedScore() {
+            if (filteredData.length === 0) return 0;
+            
+            // Get scoring weights from inputs (or use defaults matching official system)
+            const scoreWeights = {
+                onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
+                early_1_2: parseInt(document.getElementById('points_early_1_2')?.value || 100),
+                early_3_5: parseInt(document.getElementById('points_early_3_5')?.value || 75),
+                early_6_8: parseInt(document.getElementById('points_early_6_8')?.value || 50),
+                early_9_plus: parseInt(document.getElementById('points_early_9_plus')?.value || 0),
+                late_1_2: parseInt(document.getElementById('points_late_1_2')?.value || 75),
+                late_3_5: parseInt(document.getElementById('points_late_3_5')?.value || 50),
+                late_6_plus: parseInt(document.getElementById('points_late_6_plus')?.value || 0)
+            };
+            
+            let totalPoints = 0;
+            
+            filteredData.forEach(row => {
+                const daysLate = row.daysLate;
+                let lineScore;
+                
+                if (daysLate === 0) {
+                    // Exactly on time
+                    lineScore = scoreWeights.onTime;
+                } else if (daysLate < 0) {
+                    // Early delivery (negative days)
+                    const daysEarly = Math.abs(daysLate);
+                    if (daysEarly <= 2) {
+                        lineScore = scoreWeights.early_1_2;
+                    } else if (daysEarly <= 5) {
+                        lineScore = scoreWeights.early_3_5;
+                    } else if (daysEarly <= 8) {
+                        lineScore = scoreWeights.early_6_8;
+                    } else {
+                        lineScore = scoreWeights.early_9_plus;
+                    }
+                } else {
+                    // Late delivery (positive days)
+                    if (daysLate <= 2) {
+                        lineScore = scoreWeights.late_1_2;
+                    } else if (daysLate <= 5) {
+                        lineScore = scoreWeights.late_3_5;
+                    } else {
+                        lineScore = scoreWeights.late_6_plus;
+                    }
+                }
+                
+                totalPoints += lineScore;
+            });
+            
+            return totalPoints / filteredData.length;
+        }
+
+        function toggleScoringSettings() {
+            const settings = document.getElementById('scoringSettings');
+            settings.style.display = settings.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function updateScoring() {
+            updateDashboard();
+        }
+
+        function updateCharts() {
+            const totalLines = filteredData.length;
+            const lateLines = filteredData.filter(row => row.isLate).length;
+            const onTimeLines = totalLines - lateLines;
+            
+            // Performance Overview Chart (Doughnut)
+            if (charts.performance) {
+                charts.performance.destroy();
+            }
+            
+            const ctx1 = document.getElementById('performanceChart').getContext('2d');
+            charts.performance = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: ['On-Time', 'Late'],
+                    datasets: [{
+                        data: [onTimeLines, lateLines],
+                        backgroundColor: ['#4CAF50', '#E63946'],
+                        borderColor: ['#4CAF50', '#E63946'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#E6EDF3',
+                                font: {
+                                    size: 12,
+                                    family: 'Work Sans'
+                                },
+                                padding: 15
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Monthly OTD Trend Chart
+            const monthlyData = calculateMonthlyOTD();
+            
+            if (charts.monthly) {
+                charts.monthly.destroy();
+            }
+            
+            const ctx2 = document.getElementById('monthlyChart').getContext('2d');
+            charts.monthly = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: monthlyData.labels,
+                    datasets: [{
+                        label: 'OTD %',
+                        data: monthlyData.otdRates,
+                        borderColor: '#00D9B8',
+                        backgroundColor: 'rgba(0, 217, 184, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#00D9B8',
+                        pointBorderColor: '#0D1117',
+                        pointBorderWidth: 2
+                    }, {
+                        label: 'Target (98.5%)',
+                        data: monthlyData.labels.map(() => OTD_TARGET),
+                        borderColor: '#FF6B35',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        pointRadius: 0,
+                        pointHoverRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                color: '#8B949E',
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            },
+                            grid: {
+                                color: '#30363D'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#8B949E'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#E6EDF3',
+                                font: {
+                                    size: 12,
+                                    family: 'Work Sans'
+                                },
+                                padding: 15
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Top Suppliers Chart
+            const supplierStats = {};
+            allData.forEach(row => {
+                if (!supplierStats[row.supplier]) {
+                    supplierStats[row.supplier] = { total: 0, onTime: 0 };
+                }
+                supplierStats[row.supplier].total++;
+                if (!row.isLate) {
+                    supplierStats[row.supplier].onTime++;
+                }
+            });
+            
+            const supplierData = Object.entries(supplierStats)
+                .map(([name, stats]) => ({
+                    name,
+                    otd: (stats.onTime / stats.total * 100).toFixed(1)
+                }))
+                .sort((a, b) => b.otd - a.otd)
+                .slice(0, 5);
+            
+            if (charts.supplier) {
+                charts.supplier.destroy();
+            }
+            
+            const ctx3 = document.getElementById('supplierChart').getContext('2d');
+            charts.supplier = new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: supplierData.map(s => s.name.substring(0, 20)),
+                    datasets: [{
+                        label: 'OTD %',
+                        data: supplierData.map(s => s.otd),
+                        backgroundColor: 'rgba(0, 217, 184, 0.8)',
+                        borderColor: '#00D9B8',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                color: '#8B949E',
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            },
+                            grid: {
+                                color: '#30363D'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#8B949E'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function calculateMonthlyOTD() {
+            // Group data by month based on receipt date
+            const monthlyStats = {};
+            
+            filteredData.forEach(row => {
+                if (row.receiptDate) {
+                    const monthKey = `${row.receiptDate.getFullYear()}-${String(row.receiptDate.getMonth() + 1).padStart(2, '0')}`;
+                    
+                    if (!monthlyStats[monthKey]) {
+                        monthlyStats[monthKey] = {
+                            total: 0,
+                            onTime: 0,
+                            date: new Date(row.receiptDate.getFullYear(), row.receiptDate.getMonth(), 1)
+                        };
+                    }
+                    
+                    monthlyStats[monthKey].total++;
+                    if (!row.isLate) {
+                        monthlyStats[monthKey].onTime++;
+                    }
+                }
+            });
+            
+            // Sort by date and calculate OTD rates
+            const sortedMonths = Object.entries(monthlyStats)
+                .sort((a, b) => a[1].date - b[1].date)
+                .map(([key, stats]) => ({
+                    label: stats.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' }),
+                    otdRate: ((stats.onTime / stats.total) * 100).toFixed(1)
+                }));
+            
+            return {
+                labels: sortedMonths.map(m => m.label),
+                otdRates: sortedMonths.map(m => parseFloat(m.otdRate))
+            };
+        }
+
+        function updateMonthlyTable() {
+            const tbody = document.getElementById('monthlyTableBody');
+            tbody.innerHTML = '';
+            
+            if (filteredData.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="6" style="text-align: center; color: var(--text-secondary);">No data available</td>';
+                tbody.appendChild(tr);
+                return;
+            }
+            
+            // Group data by month based on receipt date
+            const monthlyStats = {};
+            
+            // Get scoring weights
+            const scoreWeights = {
+                onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
+                early_1_2: parseInt(document.getElementById('points_early_1_2')?.value || 100),
+                early_3_5: parseInt(document.getElementById('points_early_3_5')?.value || 75),
+                early_6_8: parseInt(document.getElementById('points_early_6_8')?.value || 50),
+                early_9_plus: parseInt(document.getElementById('points_early_9_plus')?.value || 0),
+                late_1_2: parseInt(document.getElementById('points_late_1_2')?.value || 75),
+                late_3_5: parseInt(document.getElementById('points_late_3_5')?.value || 50),
+                late_6_plus: parseInt(document.getElementById('points_late_6_plus')?.value || 0)
+            };
+            
+            filteredData.forEach(row => {
+                if (row.receiptDate) {
+                    const monthKey = `${row.receiptDate.getFullYear()}-${String(row.receiptDate.getMonth() + 1).padStart(2, '0')}`;
+                    
+                    if (!monthlyStats[monthKey]) {
+                        monthlyStats[monthKey] = {
+                            total: 0,
+                            onTime: 0,
+                            late: 0,
+                            totalPoints: 0,
+                            date: new Date(row.receiptDate.getFullYear(), row.receiptDate.getMonth(), 1)
+                        };
+                    }
+                    
+                    monthlyStats[monthKey].total++;
+                    if (!row.isLate) {
+                        monthlyStats[monthKey].onTime++;
+                    } else {
+                        monthlyStats[monthKey].late++;
+                    }
+                    
+                    // Calculate score for this line
+                    const daysLate = row.daysLate;
+                    let lineScore;
+                    
+                    if (daysLate === 0) {
+                        lineScore = scoreWeights.onTime;
+                    } else if (daysLate < 0) {
+                        const daysEarly = Math.abs(daysLate);
+                        if (daysEarly <= 2) {
+                            lineScore = scoreWeights.early_1_2;
+                        } else if (daysEarly <= 5) {
+                            lineScore = scoreWeights.early_3_5;
+                        } else if (daysEarly <= 8) {
+                            lineScore = scoreWeights.early_6_8;
+                        } else {
+                            lineScore = scoreWeights.early_9_plus;
+                        }
+                    } else {
+                        if (daysLate <= 2) {
+                            lineScore = scoreWeights.late_1_2;
+                        } else if (daysLate <= 5) {
+                            lineScore = scoreWeights.late_3_5;
+                        } else {
+                            lineScore = scoreWeights.late_6_plus;
+                        }
+                    }
+                    
+                    monthlyStats[monthKey].totalPoints += lineScore;
+                }
+            });
+// Calculate dPPM for each month
+if (mrrDataLoaded && mrrData.length > 0) {
+    // Group MRR data by month
+    const mrrMonthlyStats = {};
+    
+    mrrData.forEach(row => {
+        if (row.closeDate) {
+            const monthKey = `${row.closeDate.getFullYear()}-${String(row.closeDate.getMonth() + 1).padStart(2, '0')}`;
+            
+            if (!mrrMonthlyStats[monthKey]) {
+                mrrMonthlyStats[monthKey] = { totalRejected: 0 };
+            }
+            
+            const rejected = parseFloat(row.qtyRejected) || 0;
+            mrrMonthlyStats[monthKey].totalRejected += rejected;
+        }
+    });
+    
 // Calculate dPPM for each month
 if (mrrDataLoaded && mrrData.length > 0) {
     console.log('=== MONTHLY dPPM CALCULATION ===');
@@ -82,3 +1714,984 @@ if (mrrDataLoaded && mrrData.length > 0) {
     
     console.log('=== END MONTHLY dPPM ===');
 }
+
+    });
+            
+            // Sort by date and create table rows
+            const sortedMonths = Object.entries(monthlyStats)
+                .sort((a, b) => a[1].date - b[1].date);
+            
+            sortedMonths.forEach(([monthKey, stats]) => {
+                const tr = document.createElement('tr');
+                
+                const monthLabel = stats.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+                const otdRate = ((stats.onTime / stats.total) * 100).toFixed(2);
+                const weightedScore = (stats.totalPoints / stats.total).toFixed(2);
+                
+                // Color coding for OTD
+                let otdColor;
+                if (parseFloat(otdRate) >= OTD_TARGET) {
+                    otdColor = 'var(--success)';
+                } else if (parseFloat(otdRate) >= 90) {
+                    otdColor = 'var(--warning)';
+                } else {
+                    otdColor = 'var(--danger)';
+                }
+                
+                // Color coding for weighted score
+                let scoreColor;
+                if (parseFloat(weightedScore) >= 98.5) {
+                    scoreColor = 'var(--success)';
+                } else if (parseFloat(weightedScore) >= 90) {
+                    scoreColor = 'var(--warning)';
+                } else {
+                    scoreColor = 'var(--danger)';
+                }
+                
+// Color coding for dPPM
+let dppmColor = 'var(--text-secondary)';
+let dppmDisplay = 'N/A';
+if (stats.dppm !== null && stats.dppm !== undefined) {
+    dppmDisplay = stats.dppm.toFixed(0);
+    if (stats.dppm < 2500) {
+        dppmColor = 'var(--success)';
+    } else if (stats.dppm < 5000) {
+        dppmColor = 'var(--accent)';
+    } else if (stats.dppm < 10000) {
+        dppmColor = 'var(--warning)';
+    } else {
+        dppmColor = 'var(--danger)';
+    }
+}
+
+tr.innerHTML = `
+    <td style="font-weight: 600;">${monthLabel}</td>
+    <td>${stats.total}</td>
+    <td style="color: var(--success)">${stats.onTime}</td>
+    <td style="color: var(--danger)">${stats.late}</td>
+    <td style="color: ${otdColor}; font-weight: 600;">${otdRate}%</td>
+    <td style="color: ${scoreColor}; font-weight: 600;">${weightedScore}</td>
+    <td style="color: ${dppmColor}; font-weight: 600;">${dppmDisplay}</td>
+`;
+                
+                tbody.appendChild(tr);
+            });
+            
+            // Add overall average row
+            if (sortedMonths.length > 0) {
+                const totalLines = filteredData.length;
+                const totalOnTime = filteredData.filter(row => !row.isLate).length;
+                const totalLate = totalLines - totalOnTime;
+                const overallOTD = ((totalOnTime / totalLines) * 100).toFixed(2);
+                const overallScore = calculateWeightedScore().toFixed(2);
+                
+                const tr = document.createElement('tr');
+                tr.style.borderTop = '2px solid var(--accent)';
+                tr.style.fontWeight = '600';
+                tr.innerHTML = `
+                    <td style="color: var(--accent);">OVERALL</td>
+                    <td>${totalLines}</td>
+                    <td style="color: var(--success)">${totalOnTime}</td>
+                    <td style="color: var(--danger)">${totalLate}</td>
+                    <td style="color: var(--accent)">${overallOTD}%</td>
+                    <td style="color: var(--accent)">${overallScore}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        function updateTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            const displayData = filteredData.slice(0, 100);
+            
+            // Get scoring weights
+            const scoreWeights = {
+                onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
+                early_1_2: parseInt(document.getElementById('points_early_1_2')?.value || 100),
+                early_3_5: parseInt(document.getElementById('points_early_3_5')?.value || 75),
+                early_6_8: parseInt(document.getElementById('points_early_6_8')?.value || 50),
+                early_9_plus: parseInt(document.getElementById('points_early_9_plus')?.value || 0),
+                late_1_2: parseInt(document.getElementById('points_late_1_2')?.value || 75),
+                late_3_5: parseInt(document.getElementById('points_late_3_5')?.value || 50),
+                late_6_plus: parseInt(document.getElementById('points_late_6_plus')?.value || 0)
+            };
+            
+            displayData.forEach(row => {
+                const tr = document.createElement('tr');
+                
+                const daysLateText = row.daysLate > 0 ? `+${row.daysLate}` : row.daysLate;
+                
+                // Calculate score for this line
+                let lineScore;
+                const daysLate = row.daysLate;
+                
+                if (daysLate === 0) {
+                    lineScore = scoreWeights.onTime;
+                } else if (daysLate < 0) {
+                    const daysEarly = Math.abs(daysLate);
+                    if (daysEarly <= 2) {
+                        lineScore = scoreWeights.early_1_2;
+                    } else if (daysEarly <= 5) {
+                        lineScore = scoreWeights.early_3_5;
+                    } else if (daysEarly <= 8) {
+                        lineScore = scoreWeights.early_6_8;
+                    } else {
+                        lineScore = scoreWeights.early_9_plus;
+                    }
+                } else {
+                    if (daysLate <= 2) {
+                        lineScore = scoreWeights.late_1_2;
+                    } else if (daysLate <= 5) {
+                        lineScore = scoreWeights.late_3_5;
+                    } else {
+                        lineScore = scoreWeights.late_6_plus;
+                    }
+                }
+                
+                // Determine status based on tolerance
+                let statusClass, statusText;
+                if (row.isTooEarly) {
+                    statusClass = 'too-early';
+                    statusText = 'Too Early';
+                } else if (row.isLate) {
+                    statusClass = 'late';
+                    statusText = 'Late';
+                } else {
+                    statusClass = 'on-time';
+                    statusText = 'On-Time';
+                }
+                
+                // Color the days late/early text
+                let daysColor;
+                if (row.isTooEarly) {
+                    daysColor = 'var(--warning)';
+                } else if (row.isLate) {
+                    daysColor = 'var(--danger)';
+                } else {
+                    daysColor = 'var(--success)';
+                }
+                
+                // Color the score
+                let scoreColor;
+                if (lineScore >= 90) {
+                    scoreColor = 'var(--success)';
+                } else if (lineScore >= 70) {
+                    scoreColor = 'var(--accent)';
+                } else if (lineScore >= 40) {
+                    scoreColor = 'var(--warning)';
+                } else {
+                    scoreColor = 'var(--danger)';
+                }
+                
+                tr.innerHTML = `
+                    <td>${row.supplier}</td>
+                    <td>${row.po}</td>
+                    <td>${row.line}</td>
+                    <td>${row.item || '-'}</td>
+                    <td>${row.promiseDate ? row.promiseDate.toLocaleDateString() : '-'}</td>
+                    <td>${row.receiptDate ? row.receiptDate.toLocaleDateString() : '-'}</td>
+                    <td style="color: ${daysColor}">${daysLateText}</td>
+                    <td style="color: ${scoreColor}; font-weight: 600;">${lineScore}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                `;
+                
+                tbody.appendChild(tr);
+            });
+            
+            if (filteredData.length > 100) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td colspan="9" style="text-align: center; color: var(--text-secondary);">Showing first 100 of ${filteredData.length} lines</td>`;
+                tbody.appendChild(tr);
+            }
+        }
+
+        function exportReport() {
+            const totalLines = filteredData.length;
+            const lateLines = filteredData.filter(row => row.isLate).length;
+            const onTimeLines = totalLines - lateLines;
+            const tooEarlyLines = filteredData.filter(row => row.isTooEarly).length;
+            const otdRate = totalLines > 0 ? ((onTimeLines / totalLines) * 100).toFixed(2) : 0;
+            
+            let csvContent = "Supplier Scorecard Report\n\n";
+            csvContent += "Summary Metrics\n";
+            csvContent += `Total Lines,${totalLines}\n`;
+            csvContent += `On-Time Lines,${onTimeLines}\n`;
+            csvContent += `Late Lines,${lateLines}\n`;
+            csvContent += `Too Early Lines,${tooEarlyLines}\n`;
+            csvContent += `OTD Rate,${otdRate}%\n`;
+            csvContent += `Target,${OTD_TARGET}%\n`;
+            csvContent += `Late Tolerance (Days),${lateTolerance}\n`;
+            csvContent += `Early Tolerance (Days),${earlyTolerance}\n\n`;
+            
+            csvContent += "Detailed Line Items\n";
+            csvContent += "Supplier,PO Number,Line,Item,Promise Date,Receipt Date,Days Late,Status\n";
+            
+            filteredData.forEach(row => {
+                let status;
+                if (row.isTooEarly) {
+                    status = 'Too Early';
+                } else if (row.isLate) {
+                    status = 'Late';
+                } else {
+                    status = 'On-Time';
+                }
+                
+                csvContent += `"${row.supplier}",${row.po},${row.line},"${row.item || ''}",`;
+                csvContent += `${row.promiseDate ? row.promiseDate.toLocaleDateString() : ''},`;
+                csvContent += `${row.receiptDate ? row.receiptDate.toLocaleDateString() : ''},`;
+                csvContent += `${row.daysLate},${status}\n`;
+            });
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `supplier_scorecard_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+        function exportToExcel() {
+            try {
+                console.log('Starting Excel export...');
+                const totalLines = filteredData.length;
+                const lateLines = filteredData.filter(row => row.isLate).length;
+                const onTimeLines = totalLines - lateLines;
+                const tooEarlyLines = filteredData.filter(row => row.isTooEarly).length;
+                const otdRate = totalLines > 0 ? ((onTimeLines / totalLines) * 100).toFixed(2) : 0;
+                const weightedScore = calculateWeightedScore();
+                
+                const supplierName = document.getElementById('supplierFilter').value;
+                const displaySupplier = supplierName !== 'all' ? supplierName : 'All Suppliers';
+                
+                // Get scoring weights for export
+                const scoreWeightsExport = {
+                    onTime: parseInt(document.getElementById('points_ontime')?.value || 100),
+                    early_1_2: parseInt(document.getElementById('points_early_1_2')?.value || 100),
+                    early_3_5: parseInt(document.getElementById('points_early_3_5')?.value || 75),
+                    early_6_8: parseInt(document.getElementById('points_early_6_8')?.value || 50),
+                    early_9_plus: parseInt(document.getElementById('points_early_9_plus')?.value || 0),
+                    late_1_2: parseInt(document.getElementById('points_late_1_2')?.value || 75),
+                    late_3_5: parseInt(document.getElementById('points_late_3_5')?.value || 50),
+                    late_6_plus: parseInt(document.getElementById('points_late_6_plus')?.value || 0)
+                };
+                
+                console.log('Creating workbook...');
+                // Create a new workbook
+                const wb = XLSX.utils.book_new();
+            
+            // ===== SHEET 1: Summary =====
+            const summaryData = [
+                ['SUPPLIER SCORECARD REPORT'],
+                [''],
+                ['Supplier:', displaySupplier],
+                ['Report Date:', new Date().toLocaleDateString()],
+                ['Date Range:', document.getElementById('dateRange').textContent],
+                [''],
+                ['PERFORMANCE METRICS'],
+                ['Metric', 'Value'],
+                ['On-Time Delivery Rate', otdRate + '%'],
+                ['Weighted Score', weightedScore.toFixed(2)],
+                ['Target OTD Rate', OTD_TARGET + '%'],
+                ['Status', parseFloat(otdRate) >= OTD_TARGET ? 'MEETS TARGET ✓' : 'BELOW TARGET'],
+                [''],
+                ['Total Lines Received', totalLines],
+                ['On-Time Lines', onTimeLines],
+                ['Late Lines', lateLines],
+                ['Too Early Lines', tooEarlyLines],
+                [''],
+                ['WEIGHTED SCORE BREAKDOWN'],
+                ['Category', 'Points', 'Count'],
+                ['On-Time (0 days)', scoreWeightsExport.onTime, filteredData.filter(r => r.daysLate === 0).length],
+                ['1-2 days early', scoreWeightsExport.early_1_2, filteredData.filter(r => r.daysLate >= -2 && r.daysLate < 0).length],
+                ['3-5 days early', scoreWeightsExport.early_3_5, filteredData.filter(r => r.daysLate >= -5 && r.daysLate <= -3).length],
+                ['6-8 days early', scoreWeightsExport.early_6_8, filteredData.filter(r => r.daysLate >= -8 && r.daysLate <= -6).length],
+                ['9+ days early', scoreWeightsExport.early_9_plus, filteredData.filter(r => r.daysLate <= -9).length],
+                ['1-2 days late', scoreWeightsExport.late_1_2, filteredData.filter(r => r.daysLate >= 1 && r.daysLate <= 2).length],
+                ['3-5 days late', scoreWeightsExport.late_3_5, filteredData.filter(r => r.daysLate >= 3 && r.daysLate <= 5).length],
+                ['6+ days late', scoreWeightsExport.late_6_plus, filteredData.filter(r => r.daysLate >= 6).length],
+                [''],
+                ['TOLERANCE SETTINGS'],
+                ['Late Tolerance (Days)', lateTolerance],
+                ['Early Tolerance (Days)', earlyTolerance],
+            ];
+            
+            const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+            
+            // Set column widths
+            ws1['!cols'] = [
+                { wch: 25 },
+                { wch: 30 }
+            ];
+            
+            // Merge title cell
+            ws1['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
+            
+            // ===== SHEET 2: Monthly Scores =====
+            const monthlyScoresData = [
+                ['MONTHLY PERFORMANCE SUMMARY'],
+                [''],
+                ['Month', 'Total Lines', 'On-Time Lines', 'Late Lines', 'OTD %', 'OTD Score']
+            ];
+            
+            // Group data by month
+            const monthlyStatsExport = {};
+            filteredData.forEach(row => {
+                if (row.receiptDate) {
+                    const monthKey = `${row.receiptDate.getFullYear()}-${String(row.receiptDate.getMonth() + 1).padStart(2, '0')}`;
+                    
+                    if (!monthlyStatsExport[monthKey]) {
+                        monthlyStatsExport[monthKey] = {
+                            total: 0,
+                            onTime: 0,
+                            late: 0,
+                            totalPoints: 0,
+                            date: new Date(row.receiptDate.getFullYear(), row.receiptDate.getMonth(), 1)
+                        };
+                    }
+                    
+                    monthlyStatsExport[monthKey].total++;
+                    if (!row.isLate) {
+                        monthlyStatsExport[monthKey].onTime++;
+                    } else {
+                        monthlyStatsExport[monthKey].late++;
+                    }
+                    
+                    // Calculate score
+                    const daysLate = row.daysLate;
+                    let lineScore;
+                    
+                    if (daysLate === 0) {
+                        lineScore = scoreWeightsExport.onTime;
+                    } else if (daysLate < 0) {
+                        const daysEarly = Math.abs(daysLate);
+                        if (daysEarly <= 2) lineScore = scoreWeightsExport.early_1_2;
+                        else if (daysEarly <= 5) lineScore = scoreWeightsExport.early_3_5;
+                        else if (daysEarly <= 8) lineScore = scoreWeightsExport.early_6_8;
+                        else lineScore = scoreWeightsExport.early_9_plus;
+                    } else {
+                        if (daysLate <= 2) lineScore = scoreWeightsExport.late_1_2;
+                        else if (daysLate <= 5) lineScore = scoreWeightsExport.late_3_5;
+                        else lineScore = scoreWeightsExport.late_6_plus;
+                    }
+                    
+                    monthlyStatsExport[monthKey].totalPoints += lineScore;
+                }
+            });
+            
+            // Sort and add to sheet
+            const sortedMonthsExport = Object.entries(monthlyStatsExport)
+                .sort((a, b) => a[1].date - b[1].date);
+            
+            sortedMonthsExport.forEach(([monthKey, stats]) => {
+                const monthLabel = stats.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+                const otdRate = ((stats.onTime / stats.total) * 100).toFixed(2);
+                const weightedScore = (stats.totalPoints / stats.total).toFixed(2);
+                
+                monthlyScoresData.push([
+                    monthLabel,
+                    stats.total,
+                    stats.onTime,
+                    stats.late,
+                    parseFloat(otdRate),
+                    parseFloat(weightedScore)
+                ]);
+            });
+            
+            // Add overall row
+            if (sortedMonthsExport.length > 0) {
+                const totalLines = filteredData.length;
+                const totalOnTime = filteredData.filter(row => !row.isLate).length;
+                const totalLate = totalLines - totalOnTime;
+                const overallOTD = ((totalOnTime / totalLines) * 100).toFixed(2);
+                
+                monthlyScoresData.push(['']); // Empty row
+                monthlyScoresData.push([
+                    'OVERALL',
+                    totalLines,
+                    totalOnTime,
+                    totalLate,
+                    parseFloat(overallOTD),
+                    parseFloat(weightedScore.toFixed(2))
+                ]);
+            }
+            
+            const ws2 = XLSX.utils.aoa_to_sheet(monthlyScoresData);
+            ws2['!cols'] = [
+                { wch: 15 },
+                { wch: 12 },
+                { wch: 15 },
+                { wch: 12 },
+                { wch: 12 },
+                { wch: 15 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws2, 'Monthly Scores');
+            
+            // ===== SHEET 3: Monthly OTD Trend =====
+            const monthlyData = calculateMonthlyOTD();
+            const monthlySheetData = [
+                ['MONTHLY ON-TIME DELIVERY TREND'],
+                [''],
+                ['Month', 'OTD %', 'Target %']
+            ];
+            
+            monthlyData.labels.forEach((label, index) => {
+                monthlySheetData.push([
+                    label,
+                    monthlyData.otdRates[index],
+                    OTD_TARGET
+                ]);
+            });
+            
+            const ws3 = XLSX.utils.aoa_to_sheet(monthlySheetData);
+            ws3['!cols'] = [
+                { wch: 15 },
+                { wch: 12 },
+                { wch: 12 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws3, 'Monthly Trend');
+            
+            // ===== SHEET 4: Repeat Late Items =====
+            // Find items that are late more than once
+            const itemLateCounts = {};
+            filteredData.forEach(row => {
+                if (row.isLate && row.item) {
+                    const key = `${row.item}|${row.supplier}`;
+                    if (!itemLateCounts[key]) {
+                        itemLateCounts[key] = {
+                            item: row.item,
+                            description: row.description || '',
+                            supplier: row.supplier,
+                            count: 0,
+                            totalDaysLate: 0,
+                            occurrences: []
+                        };
+                    }
+                    itemLateCounts[key].count++;
+                    itemLateCounts[key].totalDaysLate += row.daysLate;
+                    itemLateCounts[key].occurrences.push({
+                        po: row.po,
+                        line: row.line,
+                        dueDate: row.promiseDate,
+                        receiptDate: row.receiptDate,
+                        daysLate: row.daysLate
+                    });
+                }
+            });
+            
+            const repeatLateItems = Object.values(itemLateCounts)
+                .filter(item => item.count > 1)
+                .sort((a, b) => b.count - a.count);
+            
+            const repeatLateData = [
+                ['ITEMS LATE MORE THAN ONCE'],
+                [''],
+                ['Item', 'Description', 'Supplier', 'Times Late', 'Avg Days Late', 'Total Days Late']
+            ];
+            
+            repeatLateItems.forEach(item => {
+                const avgDaysLate = (item.totalDaysLate / item.count).toFixed(1);
+                repeatLateData.push([
+                    item.item,
+                    item.description,
+                    item.supplier,
+                    item.count,
+                    avgDaysLate,
+                    item.totalDaysLate
+                ]);
+            });
+            
+            if (repeatLateItems.length === 0) {
+                repeatLateData.push(['No items were late more than once']);
+            }
+            
+            const ws4_repeat = XLSX.utils.aoa_to_sheet(repeatLateData);
+            ws4_repeat['!cols'] = [
+                { wch: 15 },
+                { wch: 35 },
+                { wch: 25 },
+                { wch: 12 },
+                { wch: 15 },
+                { wch: 15 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws4_repeat, 'Repeat Late Items');
+            
+            // ===== SHEET 5: All Line Items =====
+            const detailData = [
+                ['ALL LINE ITEMS'],
+                [''],
+                ['Supplier', 'PO Number', 'Line', 'Item', 'Description', 'Promise Date', 'Receipt Date', 'Days Late/Early', 'Score', 'Status']
+            ];
+            
+            filteredData.forEach(row => {
+                let status;
+                if (row.isTooEarly) {
+                    status = 'Too Early';
+                } else if (row.isLate) {
+                    status = 'Late';
+                } else {
+                    status = 'On-Time';
+                }
+                
+                // Calculate line score
+                const daysLate = row.daysLate;
+                let lineScore;
+                
+                if (daysLate === 0) {
+                    lineScore = scoreWeightsExport.onTime;
+                } else if (daysLate < 0) {
+                    const daysEarly = Math.abs(daysLate);
+                    if (daysEarly <= 2) {
+                        lineScore = scoreWeightsExport.early_1_2;
+                    } else if (daysEarly <= 5) {
+                        lineScore = scoreWeightsExport.early_3_5;
+                    } else if (daysEarly <= 8) {
+                        lineScore = scoreWeightsExport.early_6_8;
+                    } else {
+                        lineScore = scoreWeightsExport.early_9_plus;
+                    }
+                } else {
+                    if (daysLate <= 2) {
+                        lineScore = scoreWeightsExport.late_1_2;
+                    } else if (daysLate <= 5) {
+                        lineScore = scoreWeightsExport.late_3_5;
+                    } else {
+                        lineScore = scoreWeightsExport.late_6_plus;
+                    }
+                }
+                
+                detailData.push([
+                    row.supplier,
+                    row.po,
+                    row.line,
+                    row.item || '',
+                    row.description || '',
+                    row.promiseDate ? row.promiseDate.toLocaleDateString() : '',
+                    row.receiptDate ? row.receiptDate.toLocaleDateString() : '',
+                    row.daysLate,
+                    lineScore,
+                    status
+                ]);
+            });
+            
+            const ws5 = XLSX.utils.aoa_to_sheet(detailData);
+            ws5['!cols'] = [
+                { wch: 25 },
+                { wch: 12 },
+                { wch: 8 },
+                { wch: 15 },
+                { wch: 35 },
+                { wch: 12 },
+                { wch: 12 },
+                { wch: 15 },
+                { wch: 10 },
+                { wch: 12 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws5, 'All Line Items');
+            
+            // ===== SHEET 6: Late Items Detail =====
+            const lateItemsData = [
+                ['LATE ITEMS DETAIL'],
+                [''],
+                ['Supplier', 'PO Number', 'Line', 'Item', 'Description', 'Promise Date', 'Receipt Date', 'Days Late']
+            ];
+            
+            const lateItems = filteredData.filter(row => row.isLate);
+            
+            lateItems.forEach(row => {
+                lateItemsData.push([
+                    row.supplier,
+                    row.po,
+                    row.line,
+                    row.item || '',
+                    row.description || '',
+                    row.promiseDate ? row.promiseDate.toLocaleDateString() : '',
+                    row.receiptDate ? row.receiptDate.toLocaleDateString() : '',
+                    row.daysLate
+                ]);
+            });
+            
+            if (lateItems.length === 0) {
+                lateItemsData.push(['No late items found']);
+            }
+            
+            const ws6 = XLSX.utils.aoa_to_sheet(lateItemsData);
+            ws6['!cols'] = [
+                { wch: 25 },
+                { wch: 12 },
+                { wch: 8 },
+                { wch: 15 },
+                { wch: 35 },
+                { wch: 12 },
+                { wch: 12 },
+                { wch: 12 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws6, 'Late Items');
+            
+            // Generate filename
+            const filename = `Supplier_Scorecard_${displaySupplier.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+            
+            console.log('Writing file:', filename);
+            // Write the file
+            XLSX.writeFile(wb, filename);
+            console.log('Excel export complete!');
+            } catch (error) {
+                console.error('Error in exportToExcel:', error);
+                alert('Error exporting to Excel: ' + error.message);
+            }
+        }
+        function generatePDFReport() {
+            try {
+                console.log('Starting PDF report generation...');
+                
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                const totalLines = filteredData.length;
+                const lateLines = filteredData.filter(row => row.isLate).length;
+                const onTimeLines = totalLines - lateLines;
+                const otdRate = totalLines > 0 ? ((onTimeLines / totalLines) * 100).toFixed(2) : 0;
+                const weightedScore = calculateWeightedScore().toFixed(2);
+                
+                const supplierName = document.getElementById('supplierFilter').value;
+// Calculate dPPM
+const dppmData = calculateDPPM();
+const dppmValue = dppmData.dppm !== null ? dppmData.dppm.toFixed(0) : 'N/A';
+const dppmStatus = dppmData.dppm !== null ? 
+    (dppmData.dppm < 2500 ? 'EXCELLENT' : 
+     dppmData.dppm < 5000 ? 'GOOD' : 
+     dppmData.dppm < 10000 ? 'REVIEW' : 'CRITICAL') : 'N/A';
+                const displaySupplier = supplierName !== 'all' ? supplierName : 'All Suppliers';
+                const dateRange = document.getElementById('dateRange').textContent || 'All Dates';
+                const today = new Date().toLocaleDateString();
+                
+                // Colors
+                const primaryColor = [10, 37, 64]; // #0A2540
+                const accentColor = [0, 217, 184]; // #00D9B8
+                const warningColor = [255, 107, 53]; // #FF6B35
+                
+                // Title
+                doc.setFillColor(...primaryColor);
+                doc.rect(0, 0, 220, 35, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(20);
+                doc.setFont('helvetica', 'bold');
+                doc.text('SUPPLIER PERFORMANCE REPORT', 105, 15, { align: 'center' });
+                
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.text(`Performance Period: ${dateRange} | Report Generated: ${today}`, 105, 25, { align: 'center' });
+                
+                // Supplier Information
+                let yPos = 45;
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Supplier Information', 20, yPos);
+                
+                yPos += 8;
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.text('Supplier Name:', 20, yPos);
+                doc.setFont('helvetica', 'bold');
+                doc.text(displaySupplier, 65, yPos);
+                
+                yPos += 6;
+                doc.setFont('helvetica', 'normal');
+                doc.text('Evaluation Period:', 20, yPos);
+                doc.setFont('helvetica', 'bold');
+                doc.text(dateRange, 65, yPos);
+                
+                // Performance Summary
+                yPos += 15;
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(...primaryColor);
+                doc.text('Performance Summary', 20, yPos);
+                
+                yPos += 5;
+                
+                // Performance metrics table
+                const metricsData = [
+    ['METRIC', 'VALUE', 'TARGET', 'STATUS'],
+    ['On-Time Delivery Rate', `${otdRate}%`, '98.5%', parseFloat(otdRate) >= OTD_TARGET ? 'PASS' : 'REVIEW'],
+    ['Weighted Score', weightedScore, '98.5', parseFloat(weightedScore) >= 98.5 ? 'PASS' : 'REVIEW'],
+    ['dPPM (Defective PPM)', dppmValue, '< 2,500', dppmStatus],
+    ['Total Lines Delivered', totalLines.toString(), '-', '-'],
+    ['On-Time Lines', onTimeLines.toString(), '-', '-'],
+    ['Late Lines', lateLines.toString(), '-', '-'],
+];
+                
+                doc.autoTable({
+                    startY: yPos,
+                    head: [metricsData[0]],
+                    body: metricsData.slice(1),
+                    theme: 'grid',
+                    headStyles: {
+                        fillColor: primaryColor,
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold',
+                        fontSize: 9
+                    },
+                    bodyStyles: {
+                        fontSize: 9
+                    },
+                    columnStyles: {
+                        0: { fontStyle: 'bold', cellWidth: 70 },
+                        1: { halign: 'center', cellWidth: 40 },
+                        2: { halign: 'center', cellWidth: 30 },
+                        3: { halign: 'center', cellWidth: 30 }
+                    },
+                    didParseCell: function(data) {
+    // Highlight OTD row
+    if (data.row.index === 0 && data.section === 'body') {
+        data.cell.styles.fillColor = [219, 234, 254]; // Light blue
+    }
+    // Highlight dPPM row
+    if (data.row.index === 2 && data.section === 'body') {
+        data.cell.styles.fillColor = [255, 243, 224]; // Light orange
+    }
+    // Color status column
+    if (data.column.index === 3 && data.section === 'body') {
+        if (data.cell.text[0] === 'PASS') {
+            data.cell.styles.textColor = [76, 175, 80]; // Green
+            data.cell.styles.fontStyle = 'bold';
+        } else if (data.cell.text[0] === 'REVIEW') {
+            data.cell.styles.textColor = [255, 107, 53]; // Orange
+            data.cell.styles.fontStyle = 'bold';
+        } else if (data.cell.text[0] === 'EXCELLENT') {
+            data.cell.styles.textColor = [76, 175, 80]; // Green
+            data.cell.styles.fontStyle = 'bold';
+        } else if (data.cell.text[0] === 'GOOD') {
+            data.cell.styles.textColor = [0, 217, 184]; // Cyan
+            data.cell.styles.fontStyle = 'bold';
+        } else if (data.cell.text[0] === 'CRITICAL') {
+            data.cell.styles.textColor = [230, 57, 70]; // Red
+            data.cell.styles.fontStyle = 'bold';
+        }
+    }
+}
+                });
+                
+                // Monthly Performance
+                yPos = doc.lastAutoTable.finalY + 15;
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(...primaryColor);
+                doc.text('Monthly On-Time Delivery Performance', 20, yPos);
+                
+                yPos += 5;
+                
+                // Calculate monthly data
+                const monthlyStats = {};
+                filteredData.forEach(row => {
+                    if (row.receiptDate) {
+                        const monthKey = `${row.receiptDate.getFullYear()}-${String(row.receiptDate.getMonth() + 1).padStart(2, '0')}`;
+                        
+                        if (!monthlyStats[monthKey]) {
+                            monthlyStats[monthKey] = {
+                                total: 0,
+                                onTime: 0,
+                                late: 0,
+                                date: new Date(row.receiptDate.getFullYear(), row.receiptDate.getMonth(), 1)
+                            };
+                        }
+                        
+                        monthlyStats[monthKey].total++;
+                        if (!row.isLate) {
+                            monthlyStats[monthKey].onTime++;
+                        } else {
+                            monthlyStats[monthKey].late++;
+                        }
+                    }
+                });
+                
+                const sortedMonths = Object.entries(monthlyStats)
+                    .sort((a, b) => a[1].date - b[1].date)
+                    .slice(-6); // Last 6 months
+                
+                const monthlyTableData = [['MONTH', 'TOTAL', 'ON-TIME', 'LATE', 'OTD %']];
+                
+                sortedMonths.forEach(([key, stats]) => {
+                    const monthLabel = stats.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+                    const monthOTD = ((stats.onTime / stats.total) * 100).toFixed(1);
+                    monthlyTableData.push([
+                        monthLabel,
+                        stats.total.toString(),
+                        stats.onTime.toString(),
+                        stats.late.toString(),
+                        `${monthOTD}%`
+                    ]);
+                });
+                
+                // Add overall row
+                monthlyTableData.push([
+                    'OVERALL',
+                    totalLines.toString(),
+                    onTimeLines.toString(),
+                    lateLines.toString(),
+                    `${otdRate}%`
+                ]);
+                
+                doc.autoTable({
+                    startY: yPos,
+                    head: [monthlyTableData[0]],
+                    body: monthlyTableData.slice(1),
+                    theme: 'grid',
+                    headStyles: {
+                        fillColor: primaryColor,
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold',
+                        fontSize: 9
+                    },
+                    bodyStyles: {
+                        fontSize: 9,
+                        halign: 'center'
+                    },
+                    columnStyles: {
+                        0: { halign: 'left', cellWidth: 35 }
+                    },
+                    didParseCell: function(data) {
+                        // Highlight overall row
+                        if (data.row.index === monthlyTableData.length - 2 && data.section === 'body') {
+                            data.cell.styles.fillColor = accentColor;
+                            data.cell.styles.textColor = [255, 255, 255];
+                            data.cell.styles.fontStyle = 'bold';
+                        }
+                    }
+                });
+                // Quality Metrics Section (if MRR data is available)
+if (dppmData.hasMRRData) {
+    yPos = doc.lastAutoTable.finalY + 15;
+    
+    // Check if we need a new page
+    if (yPos > 240) {
+        doc.addPage();
+        yPos = 20;
+    }
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...primaryColor);
+    doc.text('Quality Performance', 20, yPos);
+    
+    yPos += 5;
+    
+    const qualityData = [
+        ['QUALITY METRIC', 'VALUE'],
+        ['Total Pieces Received', dppmData.totalReceived.toLocaleString()],
+        ['Total Pieces Rejected', dppmData.totalRejected.toLocaleString()],
+        ['Defect Rate', dppmData.dppm !== null ? `${dppmData.dppm.toFixed(0)} PPM` : 'N/A'],
+        ['Quality Status', dppmStatus],
+        ['MRR Records Reviewed', dppmData.mrrRecordCount ? dppmData.mrrRecordCount.toString() : '0']
+    ];
+    
+    doc.autoTable({
+        startY: yPos,
+        head: [qualityData[0]],
+        body: qualityData.slice(1),
+        theme: 'grid',
+        headStyles: {
+            fillColor: primaryColor,
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 9
+        },
+        bodyStyles: {
+            fontSize: 9
+        },
+        columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 80 },
+            1: { halign: 'center', cellWidth: 80 }
+        },
+        didParseCell: function(data) {
+            // Color the quality status row
+            if (data.row.index === 3 && data.section === 'body') {
+                if (data.column.index === 1) {
+                    if (data.cell.text[0] === 'EXCELLENT') {
+                        data.cell.styles.textColor = [76, 175, 80];
+                        data.cell.styles.fontStyle = 'bold';
+                    } else if (data.cell.text[0] === 'GOOD') {
+                        data.cell.styles.textColor = [0, 217, 184];
+                        data.cell.styles.fontStyle = 'bold';
+                    } else if (data.cell.text[0] === 'REVIEW') {
+                        data.cell.styles.textColor = [255, 107, 53];
+                        data.cell.styles.fontStyle = 'bold';
+                    } else if (data.cell.text[0] === 'CRITICAL') {
+                        data.cell.styles.textColor = [230, 57, 70];
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Notes section
+yPos = doc.lastAutoTable.finalY + 15;
+
+                // Notes section
+                yPos = doc.lastAutoTable.finalY + 15;
+                
+                // Check if we need a new page
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(...primaryColor);
+                doc.text('Notes & Action Items', 20, yPos);
+                
+                yPos += 8;
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(0, 0, 0);
+                
+                const notes = [
+    '• A line is considered late if the receipt date exceeds the promise date.',
+    `• Target OTD: 98.5% - meeting this target indicates excellent supplier performance.`,
+    `• Target dPPM: < 2,500 PPM - lower values indicate better quality performance.`,
+    '• Please review late deliveries and quality issues, implementing corrective actions where necessary.',
+    '• For questions regarding this report, please contact your procurement team.'
+];
+                
+                notes.forEach(note => {
+                    doc.text(note, 25, yPos);
+                    yPos += 5;
+                });
+                
+                // Footer
+                yPos = 280;
+                doc.setFontSize(8);
+                doc.setTextColor(150, 150, 150);
+                doc.setFont('helvetica', 'italic');
+                doc.text('This report is generated from purchase order data and reflects actual delivery performance.', 105, yPos, { align: 'center' });
+                doc.text('Confidential - For internal use only.', 105, yPos + 4, { align: 'center' });
+                
+                // Save PDF
+                const filename = `Supplier_Report_${displaySupplier.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+                doc.save(filename);
+                
+                console.log('PDF report generated successfully!');
+            } catch (error) {
+                console.error('Error generating PDF:', error);
+                alert('Error generating PDF report: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
