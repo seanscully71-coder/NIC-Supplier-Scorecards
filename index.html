@@ -968,14 +968,32 @@ function calculateDPPM(supplier = null) {
     let mrrDataToUse = mrrData;
     
     // Filter MRR by supplier if needed
-    if (targetSupplier !== 'all') {
-        mrrDataToUse = mrrData.filter(row => {
-            // Try to match supplier names (case-insensitive, trim whitespace)
-            const mrrSupplier = (row.supplier || '').trim().toUpperCase();
-            const targetUpper = targetSupplier.trim().toUpperCase();
-            return mrrSupplier === targetUpper || mrrSupplier.includes(targetUpper);
-        });
-    }
+if (targetSupplier !== 'all') {
+    console.log('=== SUPPLIER MATCHING DEBUG ===');
+    console.log('Target Supplier from PO:', targetSupplier);
+    console.log('Available MRR Suppliers:', [...new Set(mrrData.map(r => r.supplier))]);
+    
+    mrrDataToUse = mrrData.filter(row => {
+        // Try to match supplier names (case-insensitive, trim whitespace)
+        const mrrSupplier = (row.supplier || '').trim().toUpperCase();
+        const targetUpper = targetSupplier.trim().toUpperCase();
+        const match = mrrSupplier === targetUpper || mrrSupplier.includes(targetUpper) || targetUpper.includes(mrrSupplier);
+        
+        if (match) {
+            console.log('✓ MATCH FOUND:', {
+                mrrSupplier: row.supplier,
+                targetSupplier: targetSupplier,
+                rejected: row.qtyRejected
+            });
+        }
+        
+        return match;
+    });
+    
+    console.log('Matched MRR Records:', mrrDataToUse.length);
+    console.log('Total Rejected in Matched Records:', mrrDataToUse.reduce((sum, r) => sum + (parseFloat(r.qtyRejected) || 0), 0));
+    console.log('=== END DEBUG ===');
+}
     
     // Apply date filter to MRR data (using Close Date)
     if (startDate || endDate) {
