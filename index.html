@@ -2289,6 +2289,13 @@ tr.innerHTML = `
                 const weightedScore = calculateWeightedScore().toFixed(2);
                 
                 const supplierName = document.getElementById('supplierFilter').value;
+// Calculate dPPM
+const dppmData = calculateDPPM();
+const dppmValue = dppmData.dppm !== null ? dppmData.dppm.toFixed(0) : 'N/A';
+const dppmStatus = dppmData.dppm !== null ? 
+    (dppmData.dppm < 500 ? 'EXCELLENT' : 
+     dppmData.dppm < 2000 ? 'GOOD' : 
+     dppmData.dppm < 5000 ? 'REVIEW' : 'CRITICAL') : 'N/A';
                 const displaySupplier = supplierName !== 'all' ? supplierName : 'All Suppliers';
                 const dateRange = document.getElementById('dateRange').textContent || 'All Dates';
                 const today = new Date().toLocaleDateString();
@@ -2341,13 +2348,14 @@ tr.innerHTML = `
                 
                 // Performance metrics table
                 const metricsData = [
-                    ['METRIC', 'VALUE', 'TARGET', 'STATUS'],
-                    ['On-Time Delivery Rate', `${otdRate}%`, '98.5%', parseFloat(otdRate) >= OTD_TARGET ? 'PASS' : 'REVIEW'],
-                    ['Weighted Score', weightedScore, '-', '-'],
-                    ['Total Lines Delivered', totalLines.toString(), '-', '-'],
-                    ['On-Time Lines', onTimeLines.toString(), '-', '-'],
-                    ['Late Lines', lateLines.toString(), '-', '-'],
-                ];
+    ['METRIC', 'VALUE', 'TARGET', 'STATUS'],
+    ['On-Time Delivery Rate', `${otdRate}%`, '98.5%', parseFloat(otdRate) >= OTD_TARGET ? 'PASS' : 'REVIEW'],
+    ['Weighted Score', weightedScore, '98.5', parseFloat(weightedScore) >= 98.5 ? 'PASS' : 'REVIEW'],
+    ['dPPM (Defective PPM)', dppmValue, '< 500', dppmStatus],
+    ['Total Lines Delivered', totalLines.toString(), '-', '-'],
+    ['On-Time Lines', onTimeLines.toString(), '-', '-'],
+    ['Late Lines', lateLines.toString(), '-', '-'],
+];
                 
                 doc.autoTable({
                     startY: yPos,
@@ -2370,21 +2378,34 @@ tr.innerHTML = `
                         3: { halign: 'center', cellWidth: 30 }
                     },
                     didParseCell: function(data) {
-                        // Highlight OTD row
-                        if (data.row.index === 0 && data.section === 'body') {
-                            data.cell.styles.fillColor = [219, 234, 254]; // Light blue
-                        }
-                        // Color status column
-                        if (data.column.index === 3 && data.section === 'body') {
-                            if (data.cell.text[0] === 'PASS') {
-                                data.cell.styles.textColor = [76, 175, 80]; // Green
-                                data.cell.styles.fontStyle = 'bold';
-                            } else if (data.cell.text[0] === 'REVIEW') {
-                                data.cell.styles.textColor = [255, 107, 53]; // Orange
-                                data.cell.styles.fontStyle = 'bold';
-                            }
-                        }
-                    }
+    // Highlight OTD row
+    if (data.row.index === 0 && data.section === 'body') {
+        data.cell.styles.fillColor = [219, 234, 254]; // Light blue
+    }
+    // Highlight dPPM row
+    if (data.row.index === 2 && data.section === 'body') {
+        data.cell.styles.fillColor = [255, 243, 224]; // Light orange
+    }
+    // Color status column
+    if (data.column.index === 3 && data.section === 'body') {
+        if (data.cell.text[0] === 'PASS') {
+            data.cell.styles.textColor = [76, 175, 80]; // Green
+            data.cell.styles.fontStyle = 'bold';
+        } else if (data.cell.text[0] === 'REVIEW') {
+            data.cell.styles.textColor = [255, 107, 53]; // Orange
+            data.cell.styles.fontStyle = 'bold';
+        } else if (data.cell.text[0] === 'EXCELLENT') {
+            data.cell.styles.textColor = [76, 175, 80]; // Green
+            data.cell.styles.fontStyle = 'bold';
+        } else if (data.cell.text[0] === 'GOOD') {
+            data.cell.styles.textColor = [0, 217, 184]; // Cyan
+            data.cell.styles.fontStyle = 'bold';
+        } else if (data.cell.text[0] === 'CRITICAL') {
+            data.cell.styles.textColor = [230, 57, 70]; // Red
+            data.cell.styles.fontStyle = 'bold';
+        }
+    }
+}
                 });
                 
                 // Monthly Performance
@@ -2474,7 +2495,76 @@ tr.innerHTML = `
                         }
                     }
                 });
-                
+                // Quality Metrics Section (if MRR data is available)
+if (dppmData.hasMRRData) {
+    yPos = doc.lastAutoTable.finalY + 15;
+    
+    // Check if we need a new page
+    if (yPos > 240) {
+        doc.addPage();
+        yPos = 20;
+    }
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...primaryColor);
+    doc.text('Quality Performance', 20, yPos);
+    
+    yPos += 5;
+    
+    const qualityData = [
+        ['QUALITY METRIC', 'VALUE'],
+        ['Total Pieces Received', dppmData.totalReceived.toLocaleString()],
+        ['Total Pieces Rejected', dppmData.totalRejected.toLocaleString()],
+        ['Defect Rate', dppmData.dppm !== null ? `${dppmData.dppm.toFixed(0)} PPM` : 'N/A'],
+        ['Quality Status', dppmStatus],
+        ['MRR Records Reviewed', dppmData.mrrRecordCount ? dppmData.mrrRecordCount.toString() : '0']
+    ];
+    
+    doc.autoTable({
+        startY: yPos,
+        head: [qualityData[0]],
+        body: qualityData.slice(1),
+        theme: 'grid',
+        headStyles: {
+            fillColor: primaryColor,
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 9
+        },
+        bodyStyles: {
+            fontSize: 9
+        },
+        columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 80 },
+            1: { halign: 'center', cellWidth: 80 }
+        },
+        didParseCell: function(data) {
+            // Color the quality status row
+            if (data.row.index === 3 && data.section === 'body') {
+                if (data.column.index === 1) {
+                    if (data.cell.text[0] === 'EXCELLENT') {
+                        data.cell.styles.textColor = [76, 175, 80];
+                        data.cell.styles.fontStyle = 'bold';
+                    } else if (data.cell.text[0] === 'GOOD') {
+                        data.cell.styles.textColor = [0, 217, 184];
+                        data.cell.styles.fontStyle = 'bold';
+                    } else if (data.cell.text[0] === 'REVIEW') {
+                        data.cell.styles.textColor = [255, 107, 53];
+                        data.cell.styles.fontStyle = 'bold';
+                    } else if (data.cell.text[0] === 'CRITICAL') {
+                        data.cell.styles.textColor = [230, 57, 70];
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Notes section
+yPos = doc.lastAutoTable.finalY + 15;
+
                 // Notes section
                 yPos = doc.lastAutoTable.finalY + 15;
                 
@@ -2495,11 +2585,12 @@ tr.innerHTML = `
                 doc.setTextColor(0, 0, 0);
                 
                 const notes = [
-                    '• A line is considered late if the receipt date exceeds the promise date.',
-                    `• Target OTD: 98.5% - meeting this target indicates excellent supplier performance.`,
-                    '• Please review late deliveries and implement corrective actions where necessary.',
-                    '• For questions regarding this report, please contact your procurement team.'
-                ];
+    '• A line is considered late if the receipt date exceeds the promise date.',
+    `• Target OTD: 98.5% - meeting this target indicates excellent supplier performance.`,
+    `• Target dPPM: < 500 PPM - lower values indicate better quality performance.`,
+    '• Please review late deliveries and quality issues, implementing corrective actions where necessary.',
+    '• For questions regarding this report, please contact your procurement team.'
+];
                 
                 notes.forEach(note => {
                     doc.text(note, 25, yPos);
