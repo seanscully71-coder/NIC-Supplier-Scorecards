@@ -681,9 +681,9 @@
                 </div>
 
                 <div class="metric-card">
-                    <div class="metric-label">dPPM (Defective PPM)</div>
-                    <div class="metric-value warning" id="dppmValue">N/A</div>
-                    <div class="metric-subtitle" id="dppmSubtitle">Upload MRR data</div>
+    <div class="metric-label">dPPM (Defective PPM)</div>
+    <div class="metric-value warning" id="dppmValue">N/A</div>
+    <div class="metric-subtitle" id="dppmSubtitle">Target: < 2,500</div>
                     <div class="progress-bar" style="display: none;" id="dppmProgressBar">
                         <div class="progress-fill" id="dppmProgress" style="width: 0%; background: var(--warning);"></div>
                     </div>
@@ -1168,23 +1168,23 @@ const dppmProgress = document.getElementById('dppmProgress');
 
 if (dppmData.hasMRRData && dppmData.dppm !== null) {
     dppmValueElement.textContent = dppmData.dppm.toFixed(0);
-    dppmSubtitleElement.textContent = `${dppmData.totalRejected} rejected / ${dppmData.totalReceived.toLocaleString()} received`;
+    dppmSubtitleElement.textContent = `Target: < 2,500 | ${dppmData.totalRejected} rejected / ${dppmData.totalReceived.toLocaleString()} received`;
     
     // Color code based on dPPM thresholds
-    // Excellent: < 500, Good: 500-2000, Fair: 2000-5000, Poor: > 5000
-    if (dppmData.dppm < 500) {
-        dppmValueElement.className = 'metric-value success';
-        dppmProgress.style.background = 'var(--success)';
-    } else if (dppmData.dppm < 2000) {
-        dppmValueElement.className = 'metric-value accent';
-        dppmProgress.style.background = 'var(--accent)';
-    } else if (dppmData.dppm < 5000) {
-        dppmValueElement.className = 'metric-value warning';
-        dppmProgress.style.background = 'var(--warning)';
-    } else {
-        dppmValueElement.className = 'metric-value danger';
-        dppmProgress.style.background = 'var(--danger)';
-    }
+// Excellent: < 2500, Good: 2500-5000, Fair: 5000-10000, Poor: > 10000
+if (dppmData.dppm < 2500) {
+    dppmValueElement.className = 'metric-value success';
+    dppmProgress.style.background = 'var(--success)';
+} else if (dppmData.dppm < 5000) {
+    dppmValueElement.className = 'metric-value accent';
+    dppmProgress.style.background = 'var(--accent)';
+} else if (dppmData.dppm < 10000) {
+    dppmValueElement.className = 'metric-value warning';
+    dppmProgress.style.background = 'var(--warning)';
+} else {
+    dppmValueElement.className = 'metric-value danger';
+    dppmProgress.style.background = 'var(--danger)';
+}
     
     // Show progress bar (inverse - lower is better)
     dppmProgressBar.style.display = 'block';
@@ -1689,16 +1689,16 @@ if (mrrDataLoaded && mrrData.length > 0) {
                     scoreColor = 'var(--danger)';
                 }
                 
-                // Color coding for dPPM
+// Color coding for dPPM
 let dppmColor = 'var(--text-secondary)';
 let dppmDisplay = 'N/A';
 if (stats.dppm !== null && stats.dppm !== undefined) {
     dppmDisplay = stats.dppm.toFixed(0);
-    if (stats.dppm < 500) {
+    if (stats.dppm < 2500) {
         dppmColor = 'var(--success)';
-    } else if (stats.dppm < 2000) {
-        dppmColor = 'var(--accent)';
     } else if (stats.dppm < 5000) {
+        dppmColor = 'var(--accent)';
+    } else if (stats.dppm < 10000) {
         dppmColor = 'var(--warning)';
     } else {
         dppmColor = 'var(--danger)';
@@ -2311,9 +2311,9 @@ tr.innerHTML = `
 const dppmData = calculateDPPM();
 const dppmValue = dppmData.dppm !== null ? dppmData.dppm.toFixed(0) : 'N/A';
 const dppmStatus = dppmData.dppm !== null ? 
-    (dppmData.dppm < 500 ? 'EXCELLENT' : 
-     dppmData.dppm < 2000 ? 'GOOD' : 
-     dppmData.dppm < 5000 ? 'REVIEW' : 'CRITICAL') : 'N/A';
+    (dppmData.dppm < 2500 ? 'EXCELLENT' : 
+     dppmData.dppm < 5000 ? 'GOOD' : 
+     dppmData.dppm < 10000 ? 'REVIEW' : 'CRITICAL') : 'N/A';
                 const displaySupplier = supplierName !== 'all' ? supplierName : 'All Suppliers';
                 const dateRange = document.getElementById('dateRange').textContent || 'All Dates';
                 const today = new Date().toLocaleDateString();
@@ -2369,7 +2369,7 @@ const dppmStatus = dppmData.dppm !== null ?
     ['METRIC', 'VALUE', 'TARGET', 'STATUS'],
     ['On-Time Delivery Rate', `${otdRate}%`, '98.5%', parseFloat(otdRate) >= OTD_TARGET ? 'PASS' : 'REVIEW'],
     ['Weighted Score', weightedScore, '98.5', parseFloat(weightedScore) >= 98.5 ? 'PASS' : 'REVIEW'],
-    ['dPPM (Defective PPM)', dppmValue, '< 500', dppmStatus],
+    ['dPPM (Defective PPM)', dppmValue, '< 2,500', dppmStatus],
     ['Total Lines Delivered', totalLines.toString(), '-', '-'],
     ['On-Time Lines', onTimeLines.toString(), '-', '-'],
     ['Late Lines', lateLines.toString(), '-', '-'],
@@ -2605,7 +2605,7 @@ yPos = doc.lastAutoTable.finalY + 15;
                 const notes = [
     '• A line is considered late if the receipt date exceeds the promise date.',
     `• Target OTD: 98.5% - meeting this target indicates excellent supplier performance.`,
-    `• Target dPPM: < 500 PPM - lower values indicate better quality performance.`,
+    `• Target dPPM: < 2,500 PPM - lower values indicate better quality performance.`,
     '• Please review late deliveries and quality issues, implementing corrective actions where necessary.',
     '• For questions regarding this report, please contact your procurement team.'
 ];
