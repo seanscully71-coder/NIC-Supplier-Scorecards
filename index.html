@@ -778,8 +778,11 @@
         let lateTolerance = 0;
         let earlyTolerance = 0;
 
-        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
-        document.getElementById('mrrFileInput').addEventListener('change', handleMRRFileUpload);
+        document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+    document.getElementById('mrrFileInput').addEventListener('change', handleMRRFileUpload);
+    console.log('Event listeners attached successfully');
+});
 
         function handleFileUpload(event) {
             const file = event.target.files[0];
