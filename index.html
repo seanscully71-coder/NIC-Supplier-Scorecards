@@ -720,10 +720,9 @@
                 </div>
 
                 <div class="chart-card" style="grid-column: span 2;">
-                    <h3 class="chart-title">Top Suppliers by OTD</h3>
-                    <canvas id="supplierChart"></canvas>
-                </div>
-            </div>
+    <h3 class="chart-title">Monthly Quality Performance (dPPM)</h3>
+    <canvas id="monthlyDPPMChart"></canvas>
+</div>
 
             <div class="data-table" style="margin-bottom: 2rem;">
                 <h3 class="chart-title" style="margin-bottom: 1.5rem;">Monthly Performance Summary</h3>
@@ -1315,41 +1314,93 @@ if (dppmData.dppm < 2500) {
             const lateLines = filteredData.filter(row => row.isLate).length;
             const onTimeLines = totalLines - lateLines;
             
-            // Performance Overview Chart (Doughnut)
-            if (charts.performance) {
-                charts.performance.destroy();
-            }
-            
-            const ctx1 = document.getElementById('performanceChart').getContext('2d');
-            charts.performance = new Chart(ctx1, {
-                type: 'doughnut',
-                data: {
-                    labels: ['On-Time', 'Late'],
-                    datasets: [{
-                        data: [onTimeLines, lateLines],
-                        backgroundColor: ['#4CAF50', '#E63946'],
-                        borderColor: ['#4CAF50', '#E63946'],
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: '#E6EDF3',
-                                font: {
-                                    size: 12,
-                                    family: 'Work Sans'
-                                },
-                                padding: 15
+            // Performance Overview Chart (Combined OTD + dPPM)
+if (charts.performance) {
+    charts.performance.destroy();
+}
+
+const ctx1 = document.getElementById('performanceChart').getContext('2d');
+
+// Calculate dPPM for the chart
+const dppmData = calculateDPPM();
+const hasDPPM = dppmData.hasMRRData && dppmData.dppm !== null;
+
+// Determine dPPM status color
+let dppmColor = '#8B949E'; // Gray default
+let dppmLabel = 'No Quality Data';
+let dppmValue = 0;
+
+if (hasDPPM) {
+    dppmValue = 1; // Just for visual representation
+    if (dppmData.dppm < 2500) {
+        dppmColor = '#4CAF50'; // Green
+        dppmLabel = `Quality: Excellent (${dppmData.dppm.toFixed(0)} PPM)`;
+    } else if (dppmData.dppm < 5000) {
+        dppmColor = '#00D9B8'; // Cyan
+        dppmLabel = `Quality: Good (${dppmData.dppm.toFixed(0)} PPM)`;
+    } else if (dppmData.dppm < 10000) {
+        dppmColor = '#FF6B35'; // Orange
+        dppmLabel = `Quality: Review (${dppmData.dppm.toFixed(0)} PPM)`;
+    } else {
+        dppmColor = '#E63946'; // Red
+        dppmLabel = `Quality: Critical (${dppmData.dppm.toFixed(0)} PPM)`;
+    }
+}
+
+charts.performance = new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+        labels: ['On-Time Lines', 'Late Lines', dppmLabel],
+        datasets: [{
+            data: [onTimeLines, lateLines, dppmValue],
+            backgroundColor: ['#4CAF50', '#E63946', dppmColor],
+            borderColor: ['#4CAF50', '#E63946', dppmColor],
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    color: '#E6EDF3',
+                    font: {
+                        size: 11,
+                        family: 'Work Sans'
+                    },
+                    padding: 12
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        if (context.dataIndex === 2) {
+                            // Quality data
+                            if (hasDPPM) {
+                                return [
+                                    dppmLabel,
+                                    `${dppmData.totalRejected} rejected / ${dppmData.totalReceived.toLocaleString()} received`
+                                ];
+                            } else {
+                                return 'Upload MRR data for quality metrics';
                             }
+                        } else {
+                            // OTD data
+                            const label = context.label || '';
+                            const value = context.parsed;
+                            const total = onTimeLines + lateLines;
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
                         }
                     }
                 }
-            });
+            }
+        }
+    }
+});
+
             
             // Monthly OTD Trend Chart
             const monthlyData = calculateMonthlyOTD();
@@ -1429,77 +1480,199 @@ if (dppmData.dppm < 2500) {
                 }
             });
             
-            // Top Suppliers Chart
-            const supplierStats = {};
-            allData.forEach(row => {
-                if (!supplierStats[row.supplier]) {
-                    supplierStats[row.supplier] = { total: 0, onTime: 0 };
+            // Monthly dPPM Chart
+if (charts.monthlyDPPM) {
+    charts.monthlyDPPM.destroy();
+}
+
+const ctx3 = document.getElementById('monthlyDPPMChart').getContext('2d');
+
+if (!mrrDataLoaded || !mrrData || mrrData.length === 0) {
+    // Show "No Data" message
+    charts.monthlyDPPM = new Chart(ctx3, {
+        type: 'bar',
+        data: {
+            labels: ['No MRR Data'],
+            datasets: [{
+                label: 'dPPM',
+                data: [0],
+                backgroundColor: 'rgba(139, 148, 158, 0.3)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#8B949E' },
+                    grid: { color: '#30363D' }
+                },
+                x: {
+                    ticks: { color: '#8B949E' },
+                    grid: { display: false }
                 }
-                supplierStats[row.supplier].total++;
-                if (!row.isLate) {
-                    supplierStats[row.supplier].onTime++;
+            },
+            plugins: {
+                legend: { display: false },
+                title: {
+                    display: true,
+                    text: 'Upload MRR data to see quality metrics',
+                    color: '#8B949E',
+                    font: { size: 14 }
                 }
-            });
+            }
+        }
+    });
+} else {
+    // Calculate monthly dPPM data
+    const monthlyDPPMData = [];
+    const monthlyStats = {};
+    
+    // Get vendor codes for current supplier filter
+    const supplierFilter = document.getElementById('supplierFilter').value;
+    let relevantVendorCodes = [];
+    
+    if (supplierFilter !== 'all') {
+        relevantVendorCodes = [...new Set(
+            filteredData
+                .filter(row => row.supplier === supplierFilter)
+                .map(row => row.vendorCode)
+                .filter(v => v)
+        )];
+    }
+    
+    // Group PO data by month to get received quantities
+    filteredData.forEach(row => {
+        if (row.receiptDate) {
+            const monthKey = `${row.receiptDate.getFullYear()}-${String(row.receiptDate.getMonth() + 1).padStart(2, '0')}`;
             
-            const supplierData = Object.entries(supplierStats)
-                .map(([name, stats]) => ({
-                    name,
-                    otd: (stats.onTime / stats.total * 100).toFixed(1)
-                }))
-                .sort((a, b) => b.otd - a.otd)
-                .slice(0, 5);
-            
-            if (charts.supplier) {
-                charts.supplier.destroy();
+            if (!monthlyStats[monthKey]) {
+                monthlyStats[monthKey] = {
+                    totalReceived: 0,
+                    totalRejected: 0,
+                    date: new Date(row.receiptDate.getFullYear(), row.receiptDate.getMonth(), 1)
+                };
             }
             
-            const ctx3 = document.getElementById('supplierChart').getContext('2d');
-            charts.supplier = new Chart(ctx3, {
-                type: 'bar',
-                data: {
-                    labels: supplierData.map(s => s.name.substring(0, 20)),
-                    datasets: [{
-                        label: 'OTD %',
-                        data: supplierData.map(s => s.otd),
-                        backgroundColor: 'rgba(0, 217, 184, 0.8)',
-                        borderColor: '#00D9B8',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            ticks: {
-                                color: '#8B949E',
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            },
-                            grid: {
-                                color: '#30363D'
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                color: '#8B949E'
-                            },
-                            grid: {
-                                display: false
-                            }
+            monthlyStats[monthKey].totalReceived += parseFloat(row.received) || 0;
+        }
+    });
+    
+    // Filter and group MRR data by month
+    let mrrDataToProcess = mrrData;
+    if (supplierFilter !== 'all' && relevantVendorCodes.length > 0) {
+        mrrDataToProcess = mrrData.filter(row => relevantVendorCodes.includes(row.entity));
+    }
+    
+    mrrDataToProcess.forEach(row => {
+        if (row.closeDate) {
+            const monthKey = `${row.closeDate.getFullYear()}-${String(row.closeDate.getMonth() + 1).padStart(2, '0')}`;
+            
+            if (monthlyStats[monthKey]) {
+                monthlyStats[monthKey].totalRejected += parseFloat(row.qtyRejected) || 0;
+            }
+        }
+    });
+    
+    // Calculate dPPM for each month
+    Object.entries(monthlyStats)
+        .sort((a, b) => a[1].date - b[1].date)
+        .forEach(([monthKey, stats]) => {
+            const dppm = stats.totalReceived > 0 ? 
+                (stats.totalRejected / stats.totalReceived) * 1000000 : 0;
+            
+            monthlyDPPMData.push({
+                label: stats.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' }),
+                dppm: dppm
+            });
+        });
+    
+    // Create color-coded bars based on dPPM thresholds
+    const barColors = monthlyDPPMData.map(item => {
+        if (item.dppm < 2500) return 'rgba(76, 175, 80, 0.8)'; // Green - Excellent
+        else if (item.dppm < 5000) return 'rgba(0, 217, 184, 0.8)'; // Cyan - Good
+        else if (item.dppm < 10000) return 'rgba(255, 193, 7, 0.8)'; // Yellow - Review
+        else return 'rgba(230, 57, 70, 0.8)'; // Red - Critical
+    });
+    
+    charts.monthlyDPPM = new Chart(ctx3, {
+        type: 'bar',
+        data: {
+            labels: monthlyDPPMData.map(d => d.label),
+            datasets: [{
+                label: 'dPPM',
+                data: monthlyDPPMData.map(d => d.dppm),
+                backgroundColor: barColors,
+                borderColor: barColors.map(color => color.replace('0.8', '1')),
+                borderWidth: 2
+            }, {
+                label: 'Target (2,500 PPM)',
+                data: monthlyDPPMData.map(() => 2500),
+                type: 'line',
+                borderColor: '#FF6B35',
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#8B949E',
+                        callback: function(value) {
+                            return value.toLocaleString();
                         }
                     },
-                    plugins: {
-                        legend: {
-                            display: false
+                    grid: {
+                        color: '#30363D'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#8B949E'
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#E6EDF3',
+                        font: {
+                            size: 12,
+                            family: 'Work Sans'
+                        },
+                        padding: 15,
+                        filter: function(item) {
+                            return item.text.includes('Target');
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            if (context.datasetIndex === 0) {
+                                return 'dPPM: ' + context.parsed.y.toFixed(0);
+                            }
+                            return context.dataset.label;
                         }
                     }
                 }
-            });
+            }
         }
+    });
+}
 
         function calculateMonthlyOTD() {
             // Group data by month based on receipt date
